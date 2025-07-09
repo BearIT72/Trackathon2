@@ -293,7 +293,7 @@ fun FlowContent.importPageContent(dataCount: Long = 0) {
     }
 }
 
-fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), totalPois: Long = 0) {
+fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), totalPois: Long = 0, hikesWithoutPOIs: Long = 0) {
     h1 { +"Points of Interest (POIs)" }
     p { +"Search for POIs near your tracks using Overpass API." }
 
@@ -307,6 +307,14 @@ fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), tota
                         div("card-body text-center") {
                             h3 { +"$totalPois" }
                             p { +"Total POIs in Database" }
+                        }
+                    }
+                }
+                div("col-md-6") {
+                    div("card bg-light") {
+                        div("card-body text-center") {
+                            h3 { +"$hikesWithoutPOIs" }
+                            p { +"Hikes without POIs" }
                         }
                     }
                 }
@@ -361,19 +369,109 @@ fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), tota
     }
 
     // POI counts table
-    if (poiCounts.isNotEmpty()) {
-        div("card mt-4") {
-            div("card-body") {
-                h5("card-title") { +"POI Counts by Track" }
-                table("table table-striped") {
-                    thead {
-                        tr {
-                            th { +"Hike ID" }
-                            th { +"POI Count" }
-                            th { +"Actions" }
+    div("card mt-4") {
+        div("card-body") {
+            h5("card-title") { +"POI Counts by Track" }
+
+            // Add sorting script
+            unsafe {
+                +"""
+                <script>
+                    function sortTable(n) {
+                        var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+                        table = document.getElementById("poiCountsTable");
+                        switching = true;
+                        // Set the sorting direction to ascending:
+                        dir = "asc";
+                        /* Make a loop that will continue until
+                        no switching has been done: */
+                        while (switching) {
+                            // Start by saying: no switching is done:
+                            switching = false;
+                            rows = table.rows;
+                            /* Loop through all table rows (except the
+                            first, which contains table headers): */
+                            for (i = 1; i < (rows.length - 1); i++) {
+                                // Start by saying there should be no switching:
+                                shouldSwitch = false;
+                                /* Get the two elements you want to compare,
+                                one from current row and one from the next: */
+                                x = rows[i].getElementsByTagName("TD")[n];
+                                y = rows[i + 1].getElementsByTagName("TD")[n];
+                                /* Check if the two rows should switch place,
+                                based on the direction, asc or desc: */
+                                if (dir == "asc") {
+                                    if (n === 1) {
+                                        // For POI Count column, compare as numbers
+                                        if (Number(x.innerHTML) > Number(y.innerHTML)) {
+                                            // If so, mark as a switch and break the loop:
+                                            shouldSwitch = true;
+                                            break;
+                                        }
+                                    } else {
+                                        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                                            // If so, mark as a switch and break the loop:
+                                            shouldSwitch = true;
+                                            break;
+                                        }
+                                    }
+                                } else if (dir == "desc") {
+                                    if (n === 1) {
+                                        // For POI Count column, compare as numbers
+                                        if (Number(x.innerHTML) < Number(y.innerHTML)) {
+                                            // If so, mark as a switch and break the loop:
+                                            shouldSwitch = true;
+                                            break;
+                                        }
+                                    } else {
+                                        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                                            // If so, mark as a switch and break the loop:
+                                            shouldSwitch = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            if (shouldSwitch) {
+                                /* If a switch has been marked, make the switch
+                                and mark that a switch has been done: */
+                                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                                switching = true;
+                                // Each time a switch is done, increase this count by 1:
+                                switchcount++;
+                            } else {
+                                /* If no switching has been done AND the direction is "asc",
+                                set the direction to "desc" and run the while loop again. */
+                                if (switchcount == 0 && dir == "asc") {
+                                    dir = "desc";
+                                    switching = true;
+                                }
+                            }
                         }
                     }
-                    tbody {
+                </script>
+                """
+            }
+
+            table("table table-striped") {
+                id = "poiCountsTable"
+                thead {
+                    tr {
+                        th { 
+                            attributes["onclick"] = "sortTable(0)"
+                            attributes["style"] = "cursor: pointer;"
+                            +"Hike ID ↕" 
+                        }
+                        th { 
+                            attributes["onclick"] = "sortTable(1)"
+                            attributes["style"] = "cursor: pointer;"
+                            +"POI Count ↕" 
+                        }
+                        th { +"Actions" }
+                    }
+                }
+                tbody {
+                    if (poiCounts.isNotEmpty()) {
                         poiCounts.forEach { poiCount ->
                             tr {
                                 td { +poiCount.hikeId }
@@ -402,24 +500,35 @@ fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), tota
                                 }
                             }
                         }
-                    }
-                }
-
-                // Add button to search POIs for all tracks missing them
-                if (poiCounts.isNotEmpty()) {
-                    div("mt-3") {
-                        form(action = "/pois/search-missing", method = FormMethod.post) {
-                            button(type = ButtonType.submit, classes = "btn btn-success") {
-                                +"Search POIs for All Tracks Missing Them"
+                    } else {
+                        tr {
+                            td(classes = "text-center") { 
+                                attributes["colspan"] = "3"
+                                +"No POI data available. Use the 'Search POIs' button to find Points of Interest near your tracks."
                             }
                         }
                     }
                 }
+                tfoot {
+                    tr {
+                        td(classes = "text-end fw-bold") {
+                            attributes["colspan"] = "3"
+                            +"Total rows: ${if (poiCounts.isNotEmpty()) poiCounts.size else 0}"
+                        }
+                    }
+                }
             }
-        }
-    } else {
-        div("alert alert-info mt-4") {
-            +"No POI data available. Use the 'Search POIs' button to find Points of Interest near your tracks."
+
+            // Add button to search POIs for all tracks missing them
+            if (poiCounts.isNotEmpty()) {
+                div("mt-3") {
+                    form(action = "/pois/search-missing", method = FormMethod.post) {
+                        button(type = ButtonType.submit, classes = "btn btn-success") {
+                            +"Search POIs for All Tracks Missing Them"
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -430,12 +539,14 @@ fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), tota
  * @param totalFilteredPois Total number of filtered POIs
  * @param totalArtificialPois Total number of artificial POIs
  * @param maxPOIs Maximum number of POIs to keep per track
+ * @param hikesWithoutPOIs List of hike IDs that don't have POIs
  */
 fun FlowContent.filterPoisPageContent(
     filteredPoiCounts: List<FilteredPOICountDTO> = emptyList(),
     totalFilteredPois: Long = 0,
     totalArtificialPois: Long = 0,
-    maxPOIs: Int = 10
+    maxPOIs: Int = 10,
+    hikesWithoutPOIs: List<String> = emptyList()
 ) {
     h1 { +"Filter Points of Interest (POIs)" }
     p { +"Filter POIs to keep only those close to the original track and distribute them evenly." }
@@ -543,12 +654,106 @@ fun FlowContent.filterPoisPageContent(
         div("card mt-4") {
             div("card-body") {
                 h5("card-title") { +"Filtered POI Counts by Track" }
+
+                // Add sorting script
+                unsafe {
+                    +"""
+                    <script>
+                        function sortFilteredPoiTable(n) {
+                            var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+                            table = document.getElementById("filteredPoiCountsTable");
+                            switching = true;
+                            // Set the sorting direction to ascending:
+                            dir = "asc";
+                            /* Make a loop that will continue until
+                            no switching has been done: */
+                            while (switching) {
+                                // Start by saying: no switching is done:
+                                switching = false;
+                                rows = table.rows;
+                                /* Loop through all table rows (except the
+                                first, which contains table headers): */
+                                for (i = 1; i < (rows.length - 1); i++) {
+                                    // Start by saying there should be no switching:
+                                    shouldSwitch = false;
+                                    /* Get the two elements you want to compare,
+                                    one from current row and one from the next: */
+                                    x = rows[i].getElementsByTagName("TD")[n];
+                                    y = rows[i + 1].getElementsByTagName("TD")[n];
+                                    /* Check if the two rows should switch place,
+                                    based on the direction, asc or desc: */
+                                    if (dir == "asc") {
+                                        if (n === 1 || n === 2) {
+                                            // For numeric columns, compare as numbers
+                                            if (Number(x.innerHTML) > Number(y.innerHTML)) {
+                                                // If so, mark as a switch and break the loop:
+                                                shouldSwitch = true;
+                                                break;
+                                            }
+                                        } else {
+                                            if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                                                // If so, mark as a switch and break the loop:
+                                                shouldSwitch = true;
+                                                break;
+                                            }
+                                        }
+                                    } else if (dir == "desc") {
+                                        if (n === 1 || n === 2) {
+                                            // For numeric columns, compare as numbers
+                                            if (Number(x.innerHTML) < Number(y.innerHTML)) {
+                                                // If so, mark as a switch and break the loop:
+                                                shouldSwitch = true;
+                                                break;
+                                            }
+                                        } else {
+                                            if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                                                // If so, mark as a switch and break the loop:
+                                                shouldSwitch = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (shouldSwitch) {
+                                    /* If a switch has been marked, make the switch
+                                    and mark that a switch has been done: */
+                                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                                    switching = true;
+                                    // Each time a switch is done, increase this count by 1:
+                                    switchcount++;
+                                } else {
+                                    /* If no switching has been done AND the direction is "asc",
+                                    set the direction to "desc" and run the while loop again. */
+                                    if (switchcount == 0 && dir == "asc") {
+                                        dir = "desc";
+                                        switching = true;
+                                    }
+                                }
+                            }
+                        }
+                    </script>
+                    """
+                }
+
                 table("table table-striped") {
+                    id = "filteredPoiCountsTable"
                     thead {
                         tr {
-                            th { +"Hike ID" }
-                            th { +"Total POIs" }
-                            th { +"Artificial POIs" }
+                            th { 
+                                attributes["onclick"] = "sortFilteredPoiTable(0)"
+                                attributes["style"] = "cursor: pointer;"
+                                +"Hike ID ↕" 
+                            }
+                            th { 
+                                attributes["onclick"] = "sortFilteredPoiTable(1)"
+                                attributes["style"] = "cursor: pointer;"
+                                +"Total POIs ↕" 
+                            }
+                            th { 
+                                attributes["onclick"] = "sortFilteredPoiTable(2)"
+                                attributes["style"] = "cursor: pointer;"
+                                +"Artificial POIs ↕" 
+                            }
                             th { +"Actions" }
                         }
                     }
@@ -586,12 +791,139 @@ fun FlowContent.filterPoisPageContent(
                             }
                         }
                     }
+                    tfoot {
+                        tr {
+                            td(classes = "text-end fw-bold") {
+                                attributes["colspan"] = "4"
+                                +"Total rows: ${filteredPoiCounts.size}"
+                            }
+                        }
+                    }
                 }
             }
         }
     } else {
         div("alert alert-info mt-4") {
             +"No filtered POI data available. Use the 'Filter POIs' button to filter Points of Interest near your tracks."
+        }
+    }
+
+    // Display hikes without POIs
+    if (hikesWithoutPOIs.isNotEmpty()) {
+        div("card mt-4") {
+            div("card-body") {
+                h5("card-title") { +"Hikes Without POIs" }
+                p { +"The following hikes don't have any POIs. You can generate POIs for them by clicking the button." }
+
+                // Add sorting script
+                unsafe {
+                    +"""
+                    <script>
+                        function sortHikesWithoutPoisTable(n) {
+                            var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+                            table = document.getElementById("hikesWithoutPoisTable");
+                            switching = true;
+                            // Set the sorting direction to ascending:
+                            dir = "asc";
+                            /* Make a loop that will continue until
+                            no switching has been done: */
+                            while (switching) {
+                                // Start by saying: no switching is done:
+                                switching = false;
+                                rows = table.rows;
+                                /* Loop through all table rows (except the
+                                first, which contains table headers): */
+                                for (i = 1; i < (rows.length - 1); i++) {
+                                    // Start by saying there should be no switching:
+                                    shouldSwitch = false;
+                                    /* Get the two elements you want to compare,
+                                    one from current row and one from the next: */
+                                    x = rows[i].getElementsByTagName("TD")[n];
+                                    y = rows[i + 1].getElementsByTagName("TD")[n];
+                                    /* Check if the two rows should switch place,
+                                    based on the direction, asc or desc: */
+                                    if (dir == "asc") {
+                                        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                                            // If so, mark as a switch and break the loop:
+                                            shouldSwitch = true;
+                                            break;
+                                        }
+                                    } else if (dir == "desc") {
+                                        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                                            // If so, mark as a switch and break the loop:
+                                            shouldSwitch = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (shouldSwitch) {
+                                    /* If a switch has been marked, make the switch
+                                    and mark that a switch has been done: */
+                                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                                    switching = true;
+                                    // Each time a switch is done, increase this count by 1:
+                                    switchcount++;
+                                } else {
+                                    /* If no switching has been done AND the direction is "asc",
+                                    set the direction to "desc" and run the while loop again. */
+                                    if (switchcount == 0 && dir == "asc") {
+                                        dir = "desc";
+                                        switching = true;
+                                    }
+                                }
+                            }
+                        }
+                    </script>
+                    """
+                }
+
+                table("table table-striped") {
+                    id = "hikesWithoutPoisTable"
+                    thead {
+                        tr {
+                            th { 
+                                attributes["onclick"] = "sortHikesWithoutPoisTable(0)"
+                                attributes["style"] = "cursor: pointer;"
+                                +"Hike ID ↕" 
+                            }
+                            th { +"Actions" }
+                        }
+                    }
+                    tbody {
+                        hikesWithoutPOIs.forEach { hikeId ->
+                            tr {
+                                td { +hikeId }
+                                td {
+                                    form(action = "/pois/search/${hikeId}", method = FormMethod.post) {
+                                        button(type = ButtonType.submit, classes = "btn btn-primary btn-sm") {
+                                            +"Generate POIs"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    tfoot {
+                        tr {
+                            td(classes = "text-end fw-bold") {
+                                attributes["colspan"] = "2"
+                                +"Total rows: ${hikesWithoutPOIs.size}"
+                            }
+                        }
+                    }
+                }
+
+                // Button to generate POIs for all hikes without POIs
+                if (hikesWithoutPOIs.size > 1) {
+                    div("mt-3") {
+                        form(action = "/pois/search-missing", method = FormMethod.post) {
+                            button(type = ButtonType.submit, classes = "btn btn-success") {
+                                +"Generate POIs for All Hikes Without POIs"
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

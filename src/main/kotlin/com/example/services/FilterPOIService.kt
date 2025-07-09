@@ -40,21 +40,32 @@ class FilterPOIService {
 
     /**
      * Get filtered POI counts by track
-     * @return List of FilteredPOICountDTO objects
+     * @return List of FilteredPOICountDTO objects, including hikes without filtered POIs
      */
     fun getFilteredPOICountsByTrack(): List<FilteredPOICountDTO> {
         return transaction {
-            // Get all tracks with filtered POIs
-            val tracksWithFilteredPOIs = FilteredPOIEntity.all()
+            // Get all hikes
+            val allHikes = InputDataEntity.all().map { it.hikeId }
+
+            // Get filtered POI counts for hikes that have them
+            val filteredPoiCounts = FilteredPOIEntity.all()
                 .groupBy { it.inputData.hikeId }
                 .map { (hikeId, pois) ->
-                    FilteredPOICountDTO(
+                    hikeId to FilteredPOICountDTO(
                         hikeId = hikeId,
                         count = pois.size.toLong(),
                         artificialCount = pois.count { it.isArtificial }.toLong()
                     )
-                }
-            tracksWithFilteredPOIs
+                }.toMap()
+
+            // Create a list of FilteredPOICountDTO for all hikes, with zero counts for those without filtered POIs
+            allHikes.map { hikeId ->
+                filteredPoiCounts[hikeId] ?: FilteredPOICountDTO(
+                    hikeId = hikeId,
+                    count = 0,
+                    artificialCount = 0
+                )
+            }
         }
     }
 

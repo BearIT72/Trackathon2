@@ -39,11 +39,11 @@ class POIService {
     }
     /**
      * Get POI counts by track
-     * @return List of POICountDTO objects
+     * @return List of POICountDTO objects, including hikes without POIs
      */
     fun getPOICountsByTrack(): List<POICountDTO> {
         return transaction {
-            (InputDataTable innerJoin POITable)
+            (InputDataTable leftJoin POITable)
                 .slice(InputDataTable.hikeId, POITable.id.count())
                 .selectAll()
                 .groupBy(InputDataTable.hikeId)
@@ -53,6 +53,25 @@ class POIService {
                         count = row[POITable.id.count()]
                     )
                 }
+                .sortedByDescending { it.count }
+        }
+    }
+
+    /**
+     * Get count of hikes without POIs
+     * @return Number of hikes without POIs
+     */
+    fun getHikesWithoutPOIsCount(): Long {
+        return transaction {
+            val hikesWithPOIs = (InputDataTable innerJoin POITable)
+                .slice(InputDataTable.hikeId)
+                .selectAll()
+                .groupBy(InputDataTable.hikeId)
+                .count()
+
+            val totalHikes = InputDataTable.selectAll().count()
+
+            totalHikes - hikesWithPOIs
         }
     }
 

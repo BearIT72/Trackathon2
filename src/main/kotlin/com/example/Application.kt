@@ -191,10 +191,11 @@ fun Application.configureRouting() {
         get("/pois") {
             val poiCounts = poiService.getPOICountsByTrack()
             val totalPois = poiService.getTotalPOICount()
+            val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
             call.respondHtmlTemplate(IndexPage()) {
                 activeTab = "pois"
                 content {
-                    poisPageContent(poiCounts, totalPois)
+                    poisPageContent(poiCounts, totalPois, hikesWithoutPOIs)
                 }
             }
         }
@@ -221,6 +222,7 @@ fun Application.configureRouting() {
                 val searchResult = poiService.searchAndStorePOIs()
                 val poiCounts = poiService.getPOICountsByTrack()
                 val totalPois = poiService.getTotalPOICount()
+                val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
                     content {
@@ -228,12 +230,13 @@ fun Application.configureRouting() {
                             h4("alert-heading") { +"POI Search Successful!" }
                             p { +"Found and stored ${searchResult.totalPois} POIs across ${searchResult.tracksProcessed} tracks." }
                         }
-                        poisPageContent(poiCounts, totalPois)
+                        poisPageContent(poiCounts, totalPois, hikesWithoutPOIs)
                     }
                 }
             } catch (e: Exception) {
                 val poiCounts = poiService.getPOICountsByTrack()
                 val totalPois = poiService.getTotalPOICount()
+                val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
                     content {
@@ -243,7 +246,7 @@ fun Application.configureRouting() {
                             hr {}
                             p("mb-0") { +"Please check the logs for more details." }
                         }
-                        poisPageContent(poiCounts, totalPois)
+                        poisPageContent(poiCounts, totalPois, hikesWithoutPOIs)
                     }
                 }
                 application.log.error("POI search failed", e)
@@ -253,6 +256,7 @@ fun Application.configureRouting() {
         post("/pois/purge") {
             try {
                 val purgeCount = poiService.purgePOIData()
+                val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
                     content {
@@ -260,12 +264,13 @@ fun Application.configureRouting() {
                             h4("alert-heading") { +"POI Data Purged Successfully!" }
                             p { +"Successfully purged ${purgeCount} POI records from the database." }
                         }
-                        poisPageContent(emptyList(), 0) // After purge, count is 0
+                        poisPageContent(emptyList(), 0, hikesWithoutPOIs) // After purge, count is 0
                     }
                 }
             } catch (e: Exception) {
                 val poiCounts = poiService.getPOICountsByTrack()
                 val totalPois = poiService.getTotalPOICount()
+                val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
                     content {
@@ -275,7 +280,7 @@ fun Application.configureRouting() {
                             hr {}
                             p("mb-0") { +"Please check the logs for more details." }
                         }
-                        poisPageContent(poiCounts, totalPois)
+                        poisPageContent(poiCounts, totalPois, hikesWithoutPOIs)
                     }
                 }
                 application.log.error("POI purge failed", e)
@@ -289,6 +294,7 @@ fun Application.configureRouting() {
                 val purgeCount = poiService.purgePOIDataForTrack(hikeId)
                 val poiCounts = poiService.getPOICountsByTrack()
                 val totalPois = poiService.getTotalPOICount()
+                val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
 
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
@@ -297,12 +303,13 @@ fun Application.configureRouting() {
                             h4("alert-heading") { +"POI Data Purged Successfully!" }
                             p { +"Successfully purged ${purgeCount} POI records for track ${hikeId}." }
                         }
-                        poisPageContent(poiCounts, totalPois)
+                        poisPageContent(poiCounts, totalPois, hikesWithoutPOIs)
                     }
                 }
             } catch (e: Exception) {
                 val poiCounts = poiService.getPOICountsByTrack()
                 val totalPois = poiService.getTotalPOICount()
+                val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
                     content {
@@ -312,7 +319,7 @@ fun Application.configureRouting() {
                             hr {}
                             p("mb-0") { +"Please check the logs for more details." }
                         }
-                        poisPageContent(poiCounts, totalPois)
+                        poisPageContent(poiCounts, totalPois, hikesWithoutPOIs)
                     }
                 }
                 application.log.error("POI purge for track failed", e)
@@ -326,6 +333,7 @@ fun Application.configureRouting() {
                 val searchResult = poiService.searchAndStorePOIsForTrack(hikeId)
                 val poiCounts = poiService.getPOICountsByTrack()
                 val totalPois = poiService.getTotalPOICount()
+                val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
 
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
@@ -334,12 +342,13 @@ fun Application.configureRouting() {
                             h4("alert-heading") { +"POI Search Successful!" }
                             p { +"Found and stored ${searchResult.totalPois} POIs for track ${hikeId}." }
                         }
-                        poisPageContent(poiCounts, totalPois)
+                        poisPageContent(poiCounts, totalPois, hikesWithoutPOIs)
                     }
                 }
             } catch (e: Exception) {
                 val poiCounts = poiService.getPOICountsByTrack()
                 val totalPois = poiService.getTotalPOICount()
+                val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
                     content {
@@ -349,7 +358,7 @@ fun Application.configureRouting() {
                             hr {}
                             p("mb-0") { +"Please check the logs for more details." }
                         }
-                        poisPageContent(poiCounts, totalPois)
+                        poisPageContent(poiCounts, totalPois, hikesWithoutPOIs)
                     }
                 }
                 application.log.error("POI search for track failed", e)
@@ -362,6 +371,7 @@ fun Application.configureRouting() {
                 val searchResult = poiService.searchAndStorePOIsForMissingTracks()
                 val poiCounts = poiService.getPOICountsByTrack()
                 val totalPois = poiService.getTotalPOICount()
+                val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
 
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
@@ -370,12 +380,13 @@ fun Application.configureRouting() {
                             h4("alert-heading") { +"POI Search Successful!" }
                             p { +"Found and stored ${searchResult.totalPois} POIs across ${searchResult.tracksProcessed} tracks that were missing POIs." }
                         }
-                        poisPageContent(poiCounts, totalPois)
+                        poisPageContent(poiCounts, totalPois, hikesWithoutPOIs)
                     }
                 }
             } catch (e: Exception) {
                 val poiCounts = poiService.getPOICountsByTrack()
                 val totalPois = poiService.getTotalPOICount()
+                val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
                     content {
@@ -385,7 +396,7 @@ fun Application.configureRouting() {
                             hr {}
                             p("mb-0") { +"Please check the logs for more details." }
                         }
-                        poisPageContent(poiCounts, totalPois)
+                        poisPageContent(poiCounts, totalPois, hikesWithoutPOIs)
                     }
                 }
                 application.log.error("POI search for missing tracks failed", e)
@@ -397,11 +408,12 @@ fun Application.configureRouting() {
             val filteredPoiCounts = filterPOIService.getFilteredPOICountsByTrack()
             val totalFilteredPois = filterPOIService.getTotalFilteredPOICount()
             val totalArtificialPois = filterPOIService.getTotalArtificialPOICount()
+            val hikesWithoutPOIs = poiService.getTracksWithoutPOIs()
 
             call.respondHtmlTemplate(IndexPage()) {
                 activeTab = "filter-pois"
                 content {
-                    filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois)
+                    filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois, hikesWithoutPOIs = hikesWithoutPOIs)
                 }
             }
         }
@@ -422,7 +434,7 @@ fun Application.configureRouting() {
                             h4("alert-heading") { +"POI Filtering Successful!" }
                             p { +"Filtered ${filterResult.filteredPois} POIs and created ${filterResult.artificialPois} artificial POIs across ${filterResult.tracksProcessed} tracks." }
                         }
-                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois, maxPOIs)
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois, maxPOIs, poiService.getTracksWithoutPOIs())
                     }
                 }
             } catch (e: Exception) {
@@ -439,7 +451,7 @@ fun Application.configureRouting() {
                             hr {}
                             p("mb-0") { +"Please check the logs for more details." }
                         }
-                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois)
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois, hikesWithoutPOIs = poiService.getTracksWithoutPOIs())
                     }
                 }
                 application.log.error("POI filtering failed", e)
@@ -463,7 +475,7 @@ fun Application.configureRouting() {
                             h4("alert-heading") { +"POI Filtering Successful!" }
                             p { +"Filtered ${filterResult.filteredPois} POIs and created ${filterResult.artificialPois} artificial POIs for track ${hikeId}." }
                         }
-                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois, maxPOIs)
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois, maxPOIs, poiService.getTracksWithoutPOIs())
                     }
                 }
             } catch (e: Exception) {
@@ -480,7 +492,7 @@ fun Application.configureRouting() {
                             hr {}
                             p("mb-0") { +"Please check the logs for more details." }
                         }
-                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois)
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois, hikesWithoutPOIs = poiService.getTracksWithoutPOIs())
                     }
                 }
                 application.log.error("POI filtering for track failed", e)
@@ -499,7 +511,7 @@ fun Application.configureRouting() {
                             h4("alert-heading") { +"Filtered POI Data Purged Successfully!" }
                             p { +"Successfully purged ${purgeCount} filtered POI records from the database." }
                         }
-                        filterPoisPageContent(emptyList(), 0, 0) // After purge, counts are 0
+                        filterPoisPageContent(emptyList(), 0, 0, hikesWithoutPOIs = poiService.getTracksWithoutPOIs()) // After purge, counts are 0
                     }
                 }
             } catch (e: Exception) {
@@ -516,7 +528,7 @@ fun Application.configureRouting() {
                             hr {}
                             p("mb-0") { +"Please check the logs for more details." }
                         }
-                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois)
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois, hikesWithoutPOIs = poiService.getTracksWithoutPOIs())
                     }
                 }
                 application.log.error("Filtered POI purge failed", e)
@@ -539,7 +551,7 @@ fun Application.configureRouting() {
                             h4("alert-heading") { +"Filtered POI Data Purged Successfully!" }
                             p { +"Successfully purged ${purgeCount} filtered POI records for track ${hikeId}." }
                         }
-                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois)
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois, hikesWithoutPOIs = poiService.getTracksWithoutPOIs())
                     }
                 }
             } catch (e: Exception) {
@@ -556,7 +568,7 @@ fun Application.configureRouting() {
                             hr {}
                             p("mb-0") { +"Please check the logs for more details." }
                         }
-                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois)
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois, hikesWithoutPOIs = poiService.getTracksWithoutPOIs())
                     }
                 }
                 application.log.error("Filtered POI purge for track failed", e)
