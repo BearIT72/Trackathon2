@@ -53,6 +53,11 @@ class IndexPage : Template<HTML> {
                         }
                     }
                     li("nav-item") {
+                        a(classes = "nav-link ${if (activeTab == "export") "active" else ""}", href = "/export") {
+                            +"Export"
+                        }
+                    }
+                    li("nav-item") {
                         a(classes = "nav-link ${if (activeTab == "api") "active" else ""}", href = "/api/health") {
                             +"API Health"
                         }

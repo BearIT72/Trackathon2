@@ -8,6 +8,7 @@ import com.example.services.ImportService
 import com.example.services.POIService
 import com.example.services.FilterPOIService
 import com.example.services.RouteService
+import com.example.services.ExportService
 import com.example.templates.IndexPage
 import com.example.templates.importPageContent
 import com.example.templates.poisPageContent
@@ -17,6 +18,7 @@ import com.example.templates.viewFilteredPoisPageContent
 import com.example.templates.routePageContent
 import com.example.templates.viewRoutePageContent
 import com.example.templates.welcomeContent
+import com.example.templates.exportPageContent
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.ktor.http.*
@@ -98,6 +100,7 @@ fun Application.configureRouting() {
     val poiService = POIService()
     val filterPOIService = FilterPOIService()
     val routeService = RouteService()
+    val exportService = ExportService()
     val apiService = ApiService()
 
     routing {
@@ -763,6 +766,47 @@ fun Application.configureRouting() {
             }
         }
 
+        // Export page routes
+        get("/export") {
+            call.respondHtmlTemplate(IndexPage()) {
+                activeTab = "export"
+                content {
+                    exportPageContent()
+                }
+            }
+        }
+
+        // Export to GeoJSON
+        post("/export/geojson") {
+            try {
+                val exportCount = exportService.exportToGeoJSON()
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "export"
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"Export Successful!" }
+                            p { +"Successfully exported ${exportCount} hikes to GeoJSON files in the output folder." }
+                        }
+                        exportPageContent()
+                    }
+                }
+            } catch (e: Exception) {
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "export"
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"Export Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        exportPageContent()
+                    }
+                }
+                application.log.error("Export to GeoJSON failed", e)
+            }
+        }
+
         // API routes
         route("/api") {
             get("/health") {
@@ -795,6 +839,11 @@ fun Application.configureRouting() {
             // API endpoint to get route generation progress
             get("/route/progress") {
                 call.respond(routeService.getRoutingProgress())
+            }
+
+            // API endpoint to get export progress
+            get("/export/progress") {
+                call.respond(exportService.getExportProgress())
             }
         }
     }

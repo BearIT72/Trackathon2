@@ -300,7 +300,12 @@ class FilterPOIService {
                             val lon = (element[0] as JsonPrimitive).double
                             val lat = (element[1] as JsonPrimitive).double
                             coordinates.add(Point(lat, lon))
-                        } else {
+                        } else if (element.size == 3 && element[0] is JsonPrimitive && element[1] is JsonPrimitive) {
+                            // This looks like a coordinate pair [lon, lat]
+                            val lon = (element[0] as JsonPrimitive).double
+                            val lat = (element[1] as JsonPrimitive).double
+                            coordinates.add(Point(lat, lon))
+                        }else {
                             // Recursively process array elements
                             element.forEach { extractCoordinates(it) }
                         }
