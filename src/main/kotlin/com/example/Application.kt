@@ -87,6 +87,7 @@ fun Application.configureRouting() {
         // HTML routes
         get("/") {
             call.respondHtmlTemplate(IndexPage()) {
+                activeTab = "home"
                 content {
                     welcomeContent()
                 }
@@ -95,9 +96,13 @@ fun Application.configureRouting() {
 
         // Import page routes
         get("/import") {
+            val dataCount = transaction {
+                InputDataEntity.all().count()
+            }
             call.respondHtmlTemplate(IndexPage()) {
+                activeTab = "import"
                 content {
-                    importPageContent()
+                    importPageContent(dataCount)
                 }
             }
         }
@@ -105,7 +110,11 @@ fun Application.configureRouting() {
         post("/import") {
             try {
                 val importResult = importDataFromCsv()
+                val dataCount = transaction {
+                    InputDataEntity.all().count()
+                }
                 call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "import"
                     content {
                         div("alert alert-success") {
                             h4("alert-heading") { +"Import Successful!" }
@@ -113,11 +122,15 @@ fun Application.configureRouting() {
                             hr {}
                             p("mb-0") { +"The data has been stored in the database." }
                         }
-                        importPageContent()
+                        importPageContent(dataCount)
                     }
                 }
             } catch (e: Exception) {
+                val dataCount = transaction {
+                    InputDataEntity.all().count()
+                }
                 call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "import"
                     content {
                         div("alert alert-danger") {
                             h4("alert-heading") { +"Import Failed!" }
@@ -125,10 +138,43 @@ fun Application.configureRouting() {
                             hr {}
                             p("mb-0") { +"Please check the logs for more details." }
                         }
-                        importPageContent()
+                        importPageContent(dataCount)
                     }
                 }
                 application.log.error("Import failed", e)
+            }
+        }
+
+        post("/purge") {
+            try {
+                val purgeCount = purgeAllData()
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "import"
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"Data Purged Successfully!" }
+                            p { +"Successfully purged ${purgeCount} records from the database." }
+                        }
+                        importPageContent(0) // After purge, count is 0
+                    }
+                }
+            } catch (e: Exception) {
+                val dataCount = transaction {
+                    InputDataEntity.all().count()
+                }
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "import"
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"Purge Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        importPageContent(dataCount)
+                    }
+                }
+                application.log.error("Purge failed", e)
             }
         }
 
@@ -179,6 +225,15 @@ fun Application.configureRouting() {
 }
 
 data class ImportResult(val count: Int)
+
+fun purgeAllData(): Long {
+    var purgeCount: Long = 0
+    transaction {
+        purgeCount = InputDataEntity.all().count()
+        InputDataEntity.all().forEach { it.delete() }
+    }
+    return purgeCount
+}
 
 fun importDataFromCsv(): ImportResult {
     val file = File("input/flat/id_geojson.csv")
