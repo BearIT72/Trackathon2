@@ -42,12 +42,18 @@ dependencies {
     // Logging
     implementation("ch.qos.logback:logback-classic:1.4.14")
 
+    // Configuration
+    implementation("com.typesafe:config:1.4.2")
+
     // Database
     implementation("com.h2database:h2:2.2.224")
     implementation("org.jetbrains.exposed:exposed-core:0.45.0")
     implementation("org.jetbrains.exposed:exposed-dao:0.45.0")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.45.0")
     implementation("com.zaxxer:HikariCP:5.0.1")
+
+    // CSV Parsing
+    implementation("org.apache.commons:commons-csv:1.10.0")
 
     // Testing
     testImplementation("io.ktor:ktor-server-test-host:2.3.7")

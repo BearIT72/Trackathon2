@@ -1,8 +1,11 @@
 package com.example
 
 import com.example.models.ApiResponse
+import com.example.models.InputDataEntity
+import com.example.models.InputDataTable
 import com.example.models.VersionInfo
 import com.example.templates.IndexPage
+import com.example.templates.importPageContent
 import com.example.templates.welcomeContent
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
@@ -11,13 +14,22 @@ import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.html.*
 import io.ktor.server.netty.*
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.config.*
+import com.typesafe.config.ConfigFactory
 import kotlinx.html.*
 import kotlinx.serialization.json.Json
+import org.apache.commons.csv.CSVFormat
+import org.apache.commons.csv.CSVParser
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.transactions.transaction
+import java.io.File
+import java.nio.charset.StandardCharsets
 import java.sql.Connection
 
 fun main() {
@@ -42,7 +54,7 @@ fun Application.module() {
 }
 
 fun Application.initDatabase() {
-    val config = environment.config.config("database")
+    val config = HoconApplicationConfig(ConfigFactory.load()).config("database")
     val driverClassName = config.property("driverClassName").getString()
     val jdbcURL = config.property("jdbcURL").getString()
     val username = config.property("username").getString()
@@ -62,6 +74,11 @@ fun Application.initDatabase() {
     val dataSource = HikariDataSource(hikariConfig)
     Database.connect(dataSource)
 
+    // Create tables if they don't exist
+    transaction {
+        SchemaUtils.create(InputDataTable)
+    }
+
     log.info("Database initialized with $jdbcURL")
 }
 
@@ -73,6 +90,45 @@ fun Application.configureRouting() {
                 content {
                     welcomeContent()
                 }
+            }
+        }
+
+        // Import page routes
+        get("/import") {
+            call.respondHtmlTemplate(IndexPage()) {
+                content {
+                    importPageContent()
+                }
+            }
+        }
+
+        post("/import") {
+            try {
+                val importResult = importDataFromCsv()
+                call.respondHtmlTemplate(IndexPage()) {
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"Import Successful!" }
+                            p { +"Successfully imported ${importResult.count} records." }
+                            hr {}
+                            p("mb-0") { +"The data has been stored in the database." }
+                        }
+                        importPageContent()
+                    }
+                }
+            } catch (e: Exception) {
+                call.respondHtmlTemplate(IndexPage()) {
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"Import Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        importPageContent()
+                    }
+                }
+                application.log.error("Import failed", e)
             }
         }
 
@@ -104,6 +160,56 @@ fun Application.configureRouting() {
                     )
                 )
             }
+
+            // API endpoint to get imported data count
+            get("/inputdata") {
+                val count = transaction {
+                    InputDataEntity.all().count()
+                }
+                call.respond(
+                    ApiResponse(
+                        status = "success",
+                        message = "Input data retrieved",
+                        data = mapOf("count" to count.toString())
+                    )
+                )
+            }
         }
     }
+}
+
+data class ImportResult(val count: Int)
+
+fun importDataFromCsv(): ImportResult {
+    val file = File("input/flat/id_geojson.csv")
+    if (!file.exists()) {
+        throw IllegalStateException("CSV file not found at ${file.absolutePath}")
+    }
+
+    var importCount = 0
+
+    transaction {
+        CSVParser.parse(file, StandardCharsets.UTF_8, CSVFormat.DEFAULT).use { csvParser ->
+            for (record in csvParser) {
+                if (record.size() >= 2) {
+                    val hikeId = record.get(0)
+                    val geoJson = record.get(1)
+
+                    // Check if record already exists
+                    val existingRecord = InputDataEntity.find { InputDataTable.hikeId eq hikeId }.firstOrNull()
+
+                    if (existingRecord == null) {
+                        // Create new record
+                        InputDataEntity.new {
+                            this.hikeId = hikeId
+                            this.geoJson = geoJson
+                        }
+                        importCount++
+                    }
+                }
+            }
+        }
+    }
+
+    return ImportResult(importCount)
 }

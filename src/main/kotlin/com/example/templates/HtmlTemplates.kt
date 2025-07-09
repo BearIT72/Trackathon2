@@ -5,7 +5,7 @@ import kotlinx.html.*
 
 class IndexPage : Template<HTML> {
     val content = Placeholder<FlowContent>()
-    
+
     override fun HTML.apply() {
         head {
             title("Ktor Web App")
@@ -36,8 +36,39 @@ fun FlowContent.welcomeContent() {
         }
     }
     div("mt-4") {
-        a(href = "/api/health", classes = "btn btn-primary") {
+        a(href = "/api/health", classes = "btn btn-primary me-2") {
             +"Check API Health"
+        }
+        a(href = "/import", classes = "btn btn-success") {
+            +"Import Data"
+        }
+    }
+}
+
+fun FlowContent.importPageContent() {
+    h1 { +"Data Import" }
+    p { +"Import GeoJSON data from CSV file." }
+
+    div("card mt-4") {
+        div("card-body") {
+            h5("card-title") { +"Import Data" }
+            p("card-text") { 
+                +"Click the button below to import data from "
+                code { +"inpout/flat/id_geojson.csv" }
+                +". The data will be stored in the database."
+            }
+
+            form(action = "/import", method = FormMethod.post) {
+                button(type = ButtonType.submit, classes = "btn btn-primary") {
+                    +"Start Import"
+                }
+            }
+        }
+    }
+
+    div("mt-4") {
+        a(href = "/", classes = "btn btn-secondary") {
+            +"Back to Home"
         }
     }
 }
