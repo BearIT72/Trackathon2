@@ -1,0 +1,22 @@
+curl -i -X POST \
+  'https://gh.dev-in.fr/route?key=' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "profile": "hike",
+    "points": [
+      [
+        11.539421,
+        48.118477
+      ],
+      [
+        11.559023,
+        48.12228
+      ]
+    ],
+    "snap_preventions": [
+      "motorway",
+      "ferry",
+      "tunnel"
+    ],
+    "details": []
+  }'

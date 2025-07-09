@@ -2,16 +2,20 @@ package com.example
 
 import com.example.models.*
 import com.example.models.FilteredPOITable
+import com.example.models.RouteTable
 import com.example.services.ApiService
 import com.example.services.ImportService
 import com.example.services.POIService
 import com.example.services.FilterPOIService
+import com.example.services.RouteService
 import com.example.templates.IndexPage
 import com.example.templates.importPageContent
 import com.example.templates.poisPageContent
 import com.example.templates.viewPoisPageContent
 import com.example.templates.filterPoisPageContent
 import com.example.templates.viewFilteredPoisPageContent
+import com.example.templates.routePageContent
+import com.example.templates.viewRoutePageContent
 import com.example.templates.welcomeContent
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
@@ -82,7 +86,7 @@ fun Application.initDatabase() {
 
     // Create tables if they don't exist
     transaction {
-        SchemaUtils.create(InputDataTable, POITable, FilteredPOITable)
+        SchemaUtils.create(InputDataTable, POITable, FilteredPOITable, RouteTable)
     }
 
     log.info("Database initialized with $jdbcURL")
@@ -93,6 +97,7 @@ fun Application.configureRouting() {
     val importService = ImportService()
     val poiService = POIService()
     val filterPOIService = FilterPOIService()
+    val routeService = RouteService()
     val apiService = ApiService()
 
     routing {
@@ -575,6 +580,177 @@ fun Application.configureRouting() {
             }
         }
 
+        // Routes page routes
+        get("/routes") {
+            val routeCounts = routeService.getRouteCountsByTrack()
+            val totalRoutes = routeService.getTotalRouteCount()
+            call.respondHtmlTemplate(IndexPage()) {
+                activeTab = "routes"
+                content {
+                    routePageContent(routeCounts, totalRoutes)
+                }
+            }
+        }
+
+        // Generate routes for all tracks
+        post("/routes/generate") {
+            try {
+                val generateResult = routeService.generateRoutesForAllTracks()
+                val routeCounts = routeService.getRouteCountsByTrack()
+                val totalRoutes = routeService.getTotalRouteCount()
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "routes"
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"Route Generation Successful!" }
+                            p { +"Generated ${generateResult.routesGenerated} routes across ${generateResult.tracksProcessed} tracks." }
+                        }
+                        routePageContent(routeCounts, totalRoutes)
+                    }
+                }
+            } catch (e: Exception) {
+                val routeCounts = routeService.getRouteCountsByTrack()
+                val totalRoutes = routeService.getTotalRouteCount()
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "routes"
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"Route Generation Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        routePageContent(routeCounts, totalRoutes)
+                    }
+                }
+                application.log.error("Route generation failed", e)
+            }
+        }
+
+        // Generate route for a specific track
+        post("/routes/generate/{hikeId}") {
+            try {
+                val hikeId = call.parameters["hikeId"] ?: throw IllegalArgumentException("Missing hikeId parameter")
+                val generateResult = routeService.generateRouteForTrack(hikeId)
+                val routeCounts = routeService.getRouteCountsByTrack()
+                val totalRoutes = routeService.getTotalRouteCount()
+
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "routes"
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"Route Generation Successful!" }
+                            p { +"Generated route for track ${hikeId}." }
+                        }
+                        routePageContent(routeCounts, totalRoutes)
+                    }
+                }
+            } catch (e: Exception) {
+                val routeCounts = routeService.getRouteCountsByTrack()
+                val totalRoutes = routeService.getTotalRouteCount()
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "routes"
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"Route Generation Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        routePageContent(routeCounts, totalRoutes)
+                    }
+                }
+                application.log.error("Route generation for track failed", e)
+            }
+        }
+
+        // Purge all route data
+        post("/routes/purge") {
+            try {
+                val purgeCount = routeService.purgeRouteData()
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "routes"
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"Route Data Purged Successfully!" }
+                            p { +"Successfully purged ${purgeCount} route records from the database." }
+                        }
+                        routePageContent(emptyList(), 0) // After purge, count is 0
+                    }
+                }
+            } catch (e: Exception) {
+                val routeCounts = routeService.getRouteCountsByTrack()
+                val totalRoutes = routeService.getTotalRouteCount()
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "routes"
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"Route Purge Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        routePageContent(routeCounts, totalRoutes)
+                    }
+                }
+                application.log.error("Route purge failed", e)
+            }
+        }
+
+        // Purge route data for a specific track
+        post("/routes/purge/{hikeId}") {
+            try {
+                val hikeId = call.parameters["hikeId"] ?: throw IllegalArgumentException("Missing hikeId parameter")
+                val purgeCount = routeService.purgeRouteDataForTrack(hikeId)
+                val routeCounts = routeService.getRouteCountsByTrack()
+                val totalRoutes = routeService.getTotalRouteCount()
+
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "routes"
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"Route Data Purged Successfully!" }
+                            p { +"Successfully purged ${purgeCount} route records for track ${hikeId}." }
+                        }
+                        routePageContent(routeCounts, totalRoutes)
+                    }
+                }
+            } catch (e: Exception) {
+                val routeCounts = routeService.getRouteCountsByTrack()
+                val totalRoutes = routeService.getTotalRouteCount()
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "routes"
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"Route Purge Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        routePageContent(routeCounts, totalRoutes)
+                    }
+                }
+                application.log.error("Route purge for track failed", e)
+            }
+        }
+
+        // View route page routes
+        get("/routes/view") {
+            val hikeIds = poiService.getAllHikeIds()
+            val selectedHikeId = call.request.queryParameters["hikeId"]
+
+            // If a hike is selected, get its route and track data
+            val route = if (selectedHikeId != null) routeService.getRouteForTrack(selectedHikeId) else null
+            val trackData = if (selectedHikeId != null) poiService.getTrackData(selectedHikeId) else null
+
+            call.respondHtmlTemplate(IndexPage()) {
+                activeTab = "routes"
+                content {
+                    viewRoutePageContent(hikeIds, selectedHikeId, route, trackData)
+                }
+            }
+        }
+
         // API routes
         route("/api") {
             get("/health") {
@@ -602,6 +778,11 @@ fun Application.configureRouting() {
             // API endpoint to get POI filter progress
             get("/filter/progress") {
                 call.respond(filterPOIService.getFilterProgress())
+            }
+
+            // API endpoint to get route generation progress
+            get("/route/progress") {
+                call.respond(routeService.getRoutingProgress())
             }
         }
     }

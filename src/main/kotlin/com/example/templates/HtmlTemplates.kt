@@ -48,6 +48,11 @@ class IndexPage : Template<HTML> {
                         }
                     }
                     li("nav-item") {
+                        a(classes = "nav-link ${if (activeTab == "routes") "active" else ""}", href = "/routes") {
+                            +"Route"
+                        }
+                    }
+                    li("nav-item") {
                         a(classes = "nav-link ${if (activeTab == "api") "active" else ""}", href = "/api/health") {
                             +"API Health"
                         }
@@ -162,6 +167,60 @@ class IndexPage : Template<HTML> {
                             }
 
                             // Check if filtering is already in progress when page loads
+                            checkProgress();
+                        });
+                        """
+                    }
+                }
+            }
+
+            // Add JavaScript for route generation progress bar
+            if (activeTab == "routes") {
+                script(type = "text/javascript") {
+                    unsafe {
+                        +"""
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const generateForm = document.getElementById('generate-route-form');
+                            const progressContainer = document.getElementById('route-progress-container');
+                            const progressBar = document.getElementById('route-progress-bar');
+                            const progressText = document.getElementById('route-progress-text');
+
+                            if (generateForm) {
+                                generateForm.addEventListener('submit', function(e) {
+                                    // Show progress bar when form is submitted
+                                    progressContainer.classList.remove('d-none');
+
+                                    // Start polling for progress
+                                    checkProgress();
+                                });
+                            }
+
+                            function checkProgress() {
+                                fetch('/api/route/progress')
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.inProgress) {
+                                            // Update progress bar
+                                            const percent = data.total > 0 ? Math.round((data.current / data.total) * 100) : 0;
+                                            progressBar.style.width = percent + '%';
+                                            progressBar.setAttribute('aria-valuenow', percent);
+                                            progressText.textContent = 'Processed ' + data.current + ' of ' + data.total + ' tracks';
+
+                                            // Continue polling
+                                            setTimeout(checkProgress, 500);
+                                        } else if (data.total > 0 && data.current >= data.total) {
+                                            // Route generation completed
+                                            progressBar.style.width = '100%';
+                                            progressBar.setAttribute('aria-valuenow', 100);
+                                            progressText.textContent = 'Completed! Processed ' + data.current + ' of ' + data.total + ' tracks';
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error checking progress:', error);
+                                    });
+                            }
+
+                            // Check if route generation is already in progress when page loads
                             checkProgress();
                         });
                         """
