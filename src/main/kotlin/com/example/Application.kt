@@ -1,13 +1,17 @@
 package com.example
 
 import com.example.models.*
+import com.example.models.FilteredPOITable
 import com.example.services.ApiService
 import com.example.services.ImportService
 import com.example.services.POIService
+import com.example.services.FilterPOIService
 import com.example.templates.IndexPage
 import com.example.templates.importPageContent
 import com.example.templates.poisPageContent
 import com.example.templates.viewPoisPageContent
+import com.example.templates.filterPoisPageContent
+import com.example.templates.viewFilteredPoisPageContent
 import com.example.templates.welcomeContent
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
@@ -78,7 +82,7 @@ fun Application.initDatabase() {
 
     // Create tables if they don't exist
     transaction {
-        SchemaUtils.create(InputDataTable, POITable)
+        SchemaUtils.create(InputDataTable, POITable, FilteredPOITable)
     }
 
     log.info("Database initialized with $jdbcURL")
@@ -88,6 +92,7 @@ fun Application.configureRouting() {
     // Initialize services
     val importService = ImportService()
     val poiService = POIService()
+    val filterPOIService = FilterPOIService()
     val apiService = ApiService()
 
     routing {
@@ -382,6 +387,194 @@ fun Application.configureRouting() {
             }
         }
 
+        // Filter POIs page routes
+        get("/filter-pois") {
+            val filteredPoiCounts = filterPOIService.getFilteredPOICountsByTrack()
+            val totalFilteredPois = filterPOIService.getTotalFilteredPOICount()
+            val totalArtificialPois = filterPOIService.getTotalArtificialPOICount()
+
+            call.respondHtmlTemplate(IndexPage()) {
+                activeTab = "filter-pois"
+                content {
+                    filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois)
+                }
+            }
+        }
+
+        // Filter POIs for all tracks
+        post("/filter-pois/filter") {
+            try {
+                val maxPOIs = call.receiveParameters()["maxPOIs"]?.toIntOrNull() ?: 10
+                val filterResult = filterPOIService.filterPOIsForAllTracks(maxPOIs)
+                val filteredPoiCounts = filterPOIService.getFilteredPOICountsByTrack()
+                val totalFilteredPois = filterPOIService.getTotalFilteredPOICount()
+                val totalArtificialPois = filterPOIService.getTotalArtificialPOICount()
+
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "filter-pois"
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"POI Filtering Successful!" }
+                            p { +"Filtered ${filterResult.filteredPois} POIs and created ${filterResult.artificialPois} artificial POIs across ${filterResult.tracksProcessed} tracks." }
+                        }
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois, maxPOIs)
+                    }
+                }
+            } catch (e: Exception) {
+                val filteredPoiCounts = filterPOIService.getFilteredPOICountsByTrack()
+                val totalFilteredPois = filterPOIService.getTotalFilteredPOICount()
+                val totalArtificialPois = filterPOIService.getTotalArtificialPOICount()
+
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "filter-pois"
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"POI Filtering Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois)
+                    }
+                }
+                application.log.error("POI filtering failed", e)
+            }
+        }
+
+        // Filter POIs for a specific track
+        post("/filter-pois/filter/{hikeId}") {
+            try {
+                val hikeId = call.parameters["hikeId"] ?: throw IllegalArgumentException("Missing hikeId parameter")
+                val maxPOIs = call.receiveParameters()["maxPOIs"]?.toIntOrNull() ?: 10
+                val filterResult = filterPOIService.filterPOIsForTrack(hikeId, maxPOIs)
+                val filteredPoiCounts = filterPOIService.getFilteredPOICountsByTrack()
+                val totalFilteredPois = filterPOIService.getTotalFilteredPOICount()
+                val totalArtificialPois = filterPOIService.getTotalArtificialPOICount()
+
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "filter-pois"
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"POI Filtering Successful!" }
+                            p { +"Filtered ${filterResult.filteredPois} POIs and created ${filterResult.artificialPois} artificial POIs for track ${hikeId}." }
+                        }
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois, maxPOIs)
+                    }
+                }
+            } catch (e: Exception) {
+                val filteredPoiCounts = filterPOIService.getFilteredPOICountsByTrack()
+                val totalFilteredPois = filterPOIService.getTotalFilteredPOICount()
+                val totalArtificialPois = filterPOIService.getTotalArtificialPOICount()
+
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "filter-pois"
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"POI Filtering Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois)
+                    }
+                }
+                application.log.error("POI filtering for track failed", e)
+            }
+        }
+
+        // Purge all filtered POI data
+        get("/filter-pois/purge") {
+            try {
+                val purgeCount = filterPOIService.purgeFilteredPOIData()
+
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "filter-pois"
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"Filtered POI Data Purged Successfully!" }
+                            p { +"Successfully purged ${purgeCount} filtered POI records from the database." }
+                        }
+                        filterPoisPageContent(emptyList(), 0, 0) // After purge, counts are 0
+                    }
+                }
+            } catch (e: Exception) {
+                val filteredPoiCounts = filterPOIService.getFilteredPOICountsByTrack()
+                val totalFilteredPois = filterPOIService.getTotalFilteredPOICount()
+                val totalArtificialPois = filterPOIService.getTotalArtificialPOICount()
+
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "filter-pois"
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"Filtered POI Purge Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois)
+                    }
+                }
+                application.log.error("Filtered POI purge failed", e)
+            }
+        }
+
+        // Purge filtered POIs for a specific track
+        post("/filter-pois/purge/{hikeId}") {
+            try {
+                val hikeId = call.parameters["hikeId"] ?: throw IllegalArgumentException("Missing hikeId parameter")
+                val purgeCount = filterPOIService.purgeFilteredPOIDataForTrack(hikeId)
+                val filteredPoiCounts = filterPOIService.getFilteredPOICountsByTrack()
+                val totalFilteredPois = filterPOIService.getTotalFilteredPOICount()
+                val totalArtificialPois = filterPOIService.getTotalArtificialPOICount()
+
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "filter-pois"
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"Filtered POI Data Purged Successfully!" }
+                            p { +"Successfully purged ${purgeCount} filtered POI records for track ${hikeId}." }
+                        }
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois)
+                    }
+                }
+            } catch (e: Exception) {
+                val filteredPoiCounts = filterPOIService.getFilteredPOICountsByTrack()
+                val totalFilteredPois = filterPOIService.getTotalFilteredPOICount()
+                val totalArtificialPois = filterPOIService.getTotalArtificialPOICount()
+
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "filter-pois"
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"Filtered POI Purge Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        filterPoisPageContent(filteredPoiCounts, totalFilteredPois, totalArtificialPois)
+                    }
+                }
+                application.log.error("Filtered POI purge for track failed", e)
+            }
+        }
+
+        // View filtered POIs page routes
+        get("/filter-pois/view") {
+            val hikeIds = poiService.getAllHikeIds()
+            val selectedHikeId = call.request.queryParameters["hikeId"]
+
+            // If a hike is selected, get its filtered POIs and track data
+            val pois = if (selectedHikeId != null) filterPOIService.getFilteredPOIsForTrack(selectedHikeId) else emptyList()
+            val trackData = if (selectedHikeId != null) poiService.getTrackData(selectedHikeId) else null
+
+            call.respondHtmlTemplate(IndexPage()) {
+                activeTab = "filter-pois"
+                content {
+                    viewFilteredPoisPageContent(hikeIds, selectedHikeId, pois, trackData)
+                }
+            }
+        }
+
         // API routes
         route("/api") {
             get("/health") {
@@ -404,6 +597,11 @@ fun Application.configureRouting() {
             // API endpoint to get POI search progress
             get("/poi/progress") {
                 call.respond(poiService.getSearchProgress())
+            }
+
+            // API endpoint to get POI filter progress
+            get("/filter/progress") {
+                call.respond(filterPOIService.getFilterProgress())
             }
         }
     }
