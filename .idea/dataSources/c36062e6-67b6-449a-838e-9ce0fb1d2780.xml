@@ -169,44 +169,105 @@
     <schema id="162" parent="2" name="INFORMATION_SCHEMA"/>
     <schema id="163" parent="2" name="PUBLIC">
       <Current>1</Current>
-      <LastIntrospectionLocalTimestamp>2025-07-09.09:46:14</LastIntrospectionLocalTimestamp>
+      <LastIntrospectionLocalTimestamp>2025-07-09.12:14:31</LastIntrospectionLocalTimestamp>
     </schema>
     <user id="164" parent="2" name="SA">
       <Admin>1</Admin>
     </user>
     <table id="165" parent="163" name="INPUTDATA"/>
-    <column id="166" parent="165" name="ID">
+    <table id="166" parent="163" name="POI_DATA"/>
+    <column id="167" parent="165" name="ID">
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>UUID|0s</StoredType>
     </column>
-    <column id="167" parent="165" name="HIKE_ID">
+    <column id="168" parent="165" name="HIKE_ID">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>CHARACTER VARYING(50)|0s</StoredType>
     </column>
-    <column id="168" parent="165" name="GEO_JSON">
+    <column id="169" parent="165" name="GEO_JSON">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>CHARACTER VARYING|0s</StoredType>
     </column>
-    <index id="169" parent="165" name="PRIMARY_KEY_B">
+    <index id="170" parent="165" name="PRIMARY_KEY_B">
       <ColNames>ID</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <index id="170" parent="165" name="INPUTDATA_HIKE_ID_UNIQUE_INDEX_B">
+    <index id="171" parent="165" name="INPUTDATA_HIKE_ID_UNIQUE_INDEX_B">
       <ColNames>HIKE_ID</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="171" parent="165" name="CONSTRAINT_B">
+    <key id="172" parent="165" name="CONSTRAINT_B">
       <ColNames>ID</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Primary>1</Primary>
     </key>
-    <key id="172" parent="165" name="INPUTDATA_HIKE_ID_UNIQUE">
+    <key id="173" parent="165" name="INPUTDATA_HIKE_ID_UNIQUE">
       <ColNames>HIKE_ID</ColNames>
+    </key>
+    <column id="174" parent="166" name="ID">
+      <NotNull>1</NotNull>
+      <Position>1</Position>
+      <StoredType>UUID|0s</StoredType>
+    </column>
+    <column id="175" parent="166" name="INPUT_DATA_ID">
+      <NotNull>1</NotNull>
+      <Position>2</Position>
+      <StoredType>UUID|0s</StoredType>
+    </column>
+    <column id="176" parent="166" name="TYPE">
+      <NotNull>1</NotNull>
+      <Position>3</Position>
+      <StoredType>CHARACTER VARYING(50)|0s</StoredType>
+    </column>
+    <column id="177" parent="166" name="NAME">
+      <Position>4</Position>
+      <StoredType>CHARACTER VARYING(255)|0s</StoredType>
+    </column>
+    <column id="178" parent="166" name="LATITUDE">
+      <NotNull>1</NotNull>
+      <Position>5</Position>
+      <StoredType>DOUBLE PRECISION|0s</StoredType>
+    </column>
+    <column id="179" parent="166" name="LONGITUDE">
+      <NotNull>1</NotNull>
+      <Position>6</Position>
+      <StoredType>DOUBLE PRECISION|0s</StoredType>
+    </column>
+    <column id="180" parent="166" name="OSM_ID">
+      <NotNull>1</NotNull>
+      <Position>7</Position>
+      <StoredType>CHARACTER VARYING(50)|0s</StoredType>
+    </column>
+    <column id="181" parent="166" name="PROPERTIES">
+      <NotNull>1</NotNull>
+      <Position>8</Position>
+      <StoredType>CHARACTER VARYING|0s</StoredType>
+    </column>
+    <foreign-key id="182" parent="166" name="FK_POI_DATA_INPUT_DATA_ID__ID">
+      <ColNames>INPUT_DATA_ID</ColNames>
+      <OnDelete>restrict</OnDelete>
+      <OnUpdate>restrict</OnUpdate>
+      <RefKeyName>CONSTRAINT_B</RefKeyName>
+      <RefTableName>INPUTDATA</RefTableName>
+    </foreign-key>
+    <index id="183" parent="166" name="PRIMARY_KEY_4">
+      <ColNames>ID</ColNames>
+      <NameSurrogate>1</NameSurrogate>
+      <Unique>1</Unique>
+    </index>
+    <index id="184" parent="166" name="FK_POI_DATA_INPUT_DATA_ID__ID_INDEX_4">
+      <ColNames>INPUT_DATA_ID</ColNames>
+      <NameSurrogate>1</NameSurrogate>
+    </index>
+    <key id="185" parent="166" name="CONSTRAINT_4">
+      <ColNames>ID</ColNames>
+      <NameSurrogate>1</NameSurrogate>
+      <Primary>1</Primary>
     </key>
   </database-model>
 </dataSource>
