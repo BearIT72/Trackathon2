@@ -47,6 +47,60 @@ class IndexPage : Template<HTML> {
                 }
             }
             script(src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js") {}
+
+            // Add JavaScript for POI search progress bar
+            if (activeTab == "pois") {
+                script(type = "text/javascript") {
+                    unsafe {
+                        +"""
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const searchForm = document.getElementById('search-poi-form');
+                            const progressContainer = document.getElementById('poi-progress-container');
+                            const progressBar = document.getElementById('poi-progress-bar');
+                            const progressText = document.getElementById('poi-progress-text');
+
+                            if (searchForm) {
+                                searchForm.addEventListener('submit', function(e) {
+                                    // Show progress bar when form is submitted
+                                    progressContainer.classList.remove('d-none');
+
+                                    // Start polling for progress
+                                    checkProgress();
+                                });
+                            }
+
+                            function checkProgress() {
+                                fetch('/api/poi/progress')
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.inProgress) {
+                                            // Update progress bar
+                                            const percent = data.total > 0 ? Math.round((data.current / data.total) * 100) : 0;
+                                            progressBar.style.width = percent + '%';
+                                            progressBar.setAttribute('aria-valuenow', percent);
+                                            progressText.textContent = 'Processed ' + data.current + ' of ' + data.total + ' tracks';
+
+                                            // Continue polling
+                                            setTimeout(checkProgress, 500);
+                                        } else if (data.total > 0 && data.current >= data.total) {
+                                            // Search completed
+                                            progressBar.style.width = '100%';
+                                            progressBar.setAttribute('aria-valuenow', 100);
+                                            progressText.textContent = 'Completed! Processed ' + data.current + ' of ' + data.total + ' tracks';
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error checking progress:', error);
+                                    });
+                            }
+
+                            // Check if a search is already in progress when page loads
+                            checkProgress();
+                        });
+                        """
+                    }
+                }
+            }
         }
     }
 }
@@ -143,8 +197,29 @@ fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), tota
                 +"The search will use the bounding box of each track to find nearby POIs."
             }
 
+            // Progress bar (hidden by default)
+            div("mt-3 mb-3 d-none") {
+                attributes["id"] = "poi-progress-container"
+                p { +"Searching for POIs... " }
+                div("progress") {
+                    div("progress-bar progress-bar-striped progress-bar-animated") {
+                        attributes["id"] = "poi-progress-bar"
+                        attributes["role"] = "progressbar"
+                        attributes["aria-valuenow"] = "0"
+                        attributes["aria-valuemin"] = "0"
+                        attributes["aria-valuemax"] = "100"
+                        attributes["style"] = "width: 0%"
+                    }
+                }
+                p {
+                    attributes["id"] = "poi-progress-text"
+                    +"Processed 0 of 0 tracks"
+                }
+            }
+
             div("d-flex gap-2") {
                 form(action = "/pois/search", method = FormMethod.post) {
+                    attributes["id"] = "search-poi-form"
                     button(type = ButtonType.submit, classes = "btn btn-primary") {
                         +"Search POIs"
                     }
@@ -169,6 +244,7 @@ fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), tota
                         tr {
                             th { +"Hike ID" }
                             th { +"POI Count" }
+                            th { +"Actions" }
                         }
                     }
                     tbody {
@@ -176,6 +252,34 @@ fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), tota
                             tr {
                                 td { +poiCount.hikeId }
                                 td { +"${poiCount.count}" }
+                                td {
+                                    div("d-flex gap-2") {
+                                        // Refresh button (search POIs for this track)
+                                        form(action = "/pois/search/${poiCount.hikeId}", method = FormMethod.post) {
+                                            button(type = ButtonType.submit, classes = "btn btn-primary btn-sm") {
+                                                +"Refresh"
+                                            }
+                                        }
+
+                                        // Purge button (delete POIs for this track)
+                                        form(action = "/pois/purge/${poiCount.hikeId}", method = FormMethod.post) {
+                                            button(type = ButtonType.submit, classes = "btn btn-danger btn-sm") {
+                                                +"Purge"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Add button to search POIs for all tracks missing them
+                if (poiCounts.isNotEmpty()) {
+                    div("mt-3") {
+                        form(action = "/pois/search-missing", method = FormMethod.post) {
+                            button(type = ButtonType.submit, classes = "btn btn-success") {
+                                +"Search POIs for All Tracks Missing Them"
                             }
                         }
                     }

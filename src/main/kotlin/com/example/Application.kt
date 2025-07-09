@@ -1,6 +1,9 @@
 package com.example
 
 import com.example.models.*
+import com.example.services.ApiService
+import com.example.services.ImportService
+import com.example.services.POIService
 import com.example.templates.IndexPage
 import com.example.templates.importPageContent
 import com.example.templates.poisPageContent
@@ -81,6 +84,11 @@ fun Application.initDatabase() {
 }
 
 fun Application.configureRouting() {
+    // Initialize services
+    val importService = ImportService()
+    val poiService = POIService()
+    val apiService = ApiService()
+
     routing {
         // HTML routes
         get("/") {
@@ -94,9 +102,7 @@ fun Application.configureRouting() {
 
         // Import page routes
         get("/import") {
-            val dataCount = transaction {
-                InputDataEntity.all().count()
-            }
+            val dataCount = importService.getInputDataCount()
             call.respondHtmlTemplate(IndexPage()) {
                 activeTab = "import"
                 content {
@@ -107,10 +113,8 @@ fun Application.configureRouting() {
 
         post("/import") {
             try {
-                val importResult = importDataFromCsv()
-                val dataCount = transaction {
-                    InputDataEntity.all().count()
-                }
+                val importResult = importService.importDataFromCsv()
+                val dataCount = importService.getInputDataCount()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "import"
                     content {
@@ -124,9 +128,7 @@ fun Application.configureRouting() {
                     }
                 }
             } catch (e: Exception) {
-                val dataCount = transaction {
-                    InputDataEntity.all().count()
-                }
+                val dataCount = importService.getInputDataCount()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "import"
                     content {
@@ -145,7 +147,7 @@ fun Application.configureRouting() {
 
         post("/purge") {
             try {
-                val purgeCount = purgeAllData()
+                val purgeCount = importService.purgeAllData()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "import"
                     content {
@@ -157,9 +159,7 @@ fun Application.configureRouting() {
                     }
                 }
             } catch (e: Exception) {
-                val dataCount = transaction {
-                    InputDataEntity.all().count()
-                }
+                val dataCount = importService.getInputDataCount()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "import"
                     content {
@@ -178,10 +178,8 @@ fun Application.configureRouting() {
 
         // POIs page routes
         get("/pois") {
-            val poiCounts = getPOICountsByTrack()
-            val totalPois = transaction {
-                POIEntity.all().count()
-            }
+            val poiCounts = poiService.getPOICountsByTrack()
+            val totalPois = poiService.getTotalPOICount()
             call.respondHtmlTemplate(IndexPage()) {
                 activeTab = "pois"
                 content {
@@ -192,11 +190,9 @@ fun Application.configureRouting() {
 
         post("/pois/search") {
             try {
-                val searchResult = searchAndStorePOIs()
-                val poiCounts = getPOICountsByTrack()
-                val totalPois = transaction {
-                    POIEntity.all().count()
-                }
+                val searchResult = poiService.searchAndStorePOIs()
+                val poiCounts = poiService.getPOICountsByTrack()
+                val totalPois = poiService.getTotalPOICount()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
                     content {
@@ -208,10 +204,8 @@ fun Application.configureRouting() {
                     }
                 }
             } catch (e: Exception) {
-                val poiCounts = getPOICountsByTrack()
-                val totalPois = transaction {
-                    POIEntity.all().count()
-                }
+                val poiCounts = poiService.getPOICountsByTrack()
+                val totalPois = poiService.getTotalPOICount()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
                     content {
@@ -230,7 +224,7 @@ fun Application.configureRouting() {
 
         post("/pois/purge") {
             try {
-                val purgeCount = purgePOIData()
+                val purgeCount = poiService.purgePOIData()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
                     content {
@@ -242,10 +236,8 @@ fun Application.configureRouting() {
                     }
                 }
             } catch (e: Exception) {
-                val poiCounts = getPOICountsByTrack()
-                val totalPois = transaction {
-                    POIEntity.all().count()
-                }
+                val poiCounts = poiService.getPOICountsByTrack()
+                val totalPois = poiService.getTotalPOICount()
                 call.respondHtmlTemplate(IndexPage()) {
                     activeTab = "pois"
                     content {
@@ -262,269 +254,139 @@ fun Application.configureRouting() {
             }
         }
 
+        // Purge POIs for a specific track
+        post("/pois/purge/{hikeId}") {
+            try {
+                val hikeId = call.parameters["hikeId"] ?: throw IllegalArgumentException("Missing hikeId parameter")
+                val purgeCount = poiService.purgePOIDataForTrack(hikeId)
+                val poiCounts = poiService.getPOICountsByTrack()
+                val totalPois = poiService.getTotalPOICount()
+
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "pois"
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"POI Data Purged Successfully!" }
+                            p { +"Successfully purged ${purgeCount} POI records for track ${hikeId}." }
+                        }
+                        poisPageContent(poiCounts, totalPois)
+                    }
+                }
+            } catch (e: Exception) {
+                val poiCounts = poiService.getPOICountsByTrack()
+                val totalPois = poiService.getTotalPOICount()
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "pois"
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"POI Purge Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        poisPageContent(poiCounts, totalPois)
+                    }
+                }
+                application.log.error("POI purge for track failed", e)
+            }
+        }
+
+        // Search POIs for a specific track
+        post("/pois/search/{hikeId}") {
+            try {
+                val hikeId = call.parameters["hikeId"] ?: throw IllegalArgumentException("Missing hikeId parameter")
+                val searchResult = poiService.searchAndStorePOIsForTrack(hikeId)
+                val poiCounts = poiService.getPOICountsByTrack()
+                val totalPois = poiService.getTotalPOICount()
+
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "pois"
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"POI Search Successful!" }
+                            p { +"Found and stored ${searchResult.totalPois} POIs for track ${hikeId}." }
+                        }
+                        poisPageContent(poiCounts, totalPois)
+                    }
+                }
+            } catch (e: Exception) {
+                val poiCounts = poiService.getPOICountsByTrack()
+                val totalPois = poiService.getTotalPOICount()
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "pois"
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"POI Search Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        poisPageContent(poiCounts, totalPois)
+                    }
+                }
+                application.log.error("POI search for track failed", e)
+            }
+        }
+
+        // Search POIs for all tracks missing them
+        post("/pois/search-missing") {
+            try {
+                val searchResult = poiService.searchAndStorePOIsForMissingTracks()
+                val poiCounts = poiService.getPOICountsByTrack()
+                val totalPois = poiService.getTotalPOICount()
+
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "pois"
+                    content {
+                        div("alert alert-success") {
+                            h4("alert-heading") { +"POI Search Successful!" }
+                            p { +"Found and stored ${searchResult.totalPois} POIs across ${searchResult.tracksProcessed} tracks that were missing POIs." }
+                        }
+                        poisPageContent(poiCounts, totalPois)
+                    }
+                }
+            } catch (e: Exception) {
+                val poiCounts = poiService.getPOICountsByTrack()
+                val totalPois = poiService.getTotalPOICount()
+                call.respondHtmlTemplate(IndexPage()) {
+                    activeTab = "pois"
+                    content {
+                        div("alert alert-danger") {
+                            h4("alert-heading") { +"POI Search Failed!" }
+                            p { +"Error: ${e.message}" }
+                            hr {}
+                            p("mb-0") { +"Please check the logs for more details." }
+                        }
+                        poisPageContent(poiCounts, totalPois)
+                    }
+                }
+                application.log.error("POI search for missing tracks failed", e)
+            }
+        }
+
         // API routes
         route("/api") {
             get("/health") {
-                call.respond(
-                    ApiResponse(
-                        status = "success",
-                        message = "Service is healthy",
-                        data = mapOf("status" to "UP")
-                    )
-                )
+                call.respond(apiService.getHealthStatus())
             }
 
             get("/version") {
-                call.respond(VersionInfo())
+                call.respond(apiService.getVersionInfo())
             }
 
             get("/info") {
-                call.respond(
-                    ApiResponse(
-                        status = "success",
-                        message = "Application information",
-                        data = mapOf(
-                            "name" to "Ktor Web App",
-                            "description" to "A simple Ktor web application with up-to-date dependencies"
-                        )
-                    )
-                )
+                call.respond(apiService.getApplicationInfo())
             }
 
             // API endpoint to get imported data count
             get("/inputdata") {
-                val count = transaction {
-                    InputDataEntity.all().count()
-                }
-                call.respond(
-                    ApiResponse(
-                        status = "success",
-                        message = "Input data retrieved",
-                        data = mapOf("count" to count.toString())
-                    )
-                )
+                call.respond(apiService.getInputDataCount())
+            }
+
+            // API endpoint to get POI search progress
+            get("/poi/progress") {
+                call.respond(poiService.getSearchProgress())
             }
         }
     }
-}
-
-data class ImportResult(val count: Int)
-
-data class POISearchResult(val totalPois: Int, val tracksProcessed: Int)
-
-fun purgeAllData(): Long {
-    var purgeCount: Long = 0
-    transaction {
-        purgeCount = InputDataEntity.all().count()
-        InputDataEntity.all().forEach { it.delete() }
-    }
-    return purgeCount
-}
-
-fun purgePOIData(): Long {
-    var purgeCount: Long = 0
-    transaction {
-        purgeCount = POIEntity.all().count()
-        POIEntity.all().forEach { it.delete() }
-    }
-    return purgeCount
-}
-
-fun getPOICountsByTrack(): List<POICountDTO> {
-    return transaction {
-        (InputDataTable innerJoin POITable)
-            .slice(InputDataTable.hikeId, POITable.id.count())
-            .selectAll()
-            .groupBy(InputDataTable.hikeId)
-            .map { row ->
-                POICountDTO(
-                    hikeId = row[InputDataTable.hikeId],
-                    count = row[POITable.id.count()]
-                )
-            }
-    }
-}
-
-// Parse GeoJSON to extract bounding box
-fun extractBoundingBox(geoJson: String): BoundingBox? {
-    try {
-        val jsonElement = Json.parseToJsonElement(geoJson)
-        val coordinates = mutableListOf<Pair<Double, Double>>()
-
-        // Extract all coordinates from the GeoJSON
-        fun extractCoordinates(element: JsonElement) {
-            when (element) {
-                is JsonArray -> {
-                    if (element.size == 2 && element[0] is JsonPrimitive && element[1] is JsonPrimitive) {
-                        // This looks like a coordinate pair [lon, lat]
-                        val lon = (element[0] as JsonPrimitive).double
-                        val lat = (element[1] as JsonPrimitive).double
-                        coordinates.add(Pair(lon, lat))
-                    } else {
-                        // Recursively process array elements
-                        element.forEach { extractCoordinates(it) }
-                    }
-                }
-                is JsonObject -> {
-                    // Process object properties
-                    element.forEach { (_, value) -> extractCoordinates(value) }
-                }
-                else -> {} // Ignore primitives
-            }
-        }
-
-        extractCoordinates(jsonElement)
-
-        if (coordinates.isEmpty()) {
-            return null
-        }
-
-        // Calculate bounding box
-        var minLon = Double.MAX_VALUE
-        var minLat = Double.MAX_VALUE
-        var maxLon = Double.MIN_VALUE
-        var maxLat = Double.MIN_VALUE
-
-        coordinates.forEach { (lon, lat) ->
-            minLon = minOf(minLon, lon)
-            minLat = minOf(minLat, lat)
-            maxLon = maxOf(maxLon, lon)
-            maxLat = maxOf(maxLat, lat)
-        }
-
-        return BoundingBox(minLat, minLon, maxLat, maxLon)
-    } catch (e: Exception) {
-        return null
-    }
-}
-
-data class BoundingBox(val minLat: Double, val minLon: Double, val maxLat: Double, val maxLon: Double)
-
-fun searchAndStorePOIs(): POISearchResult {
-    var totalPois = 0
-    var tracksProcessed = 0
-
-    transaction {
-        // Get all tracks
-        val tracks = InputDataEntity.all().toList()
-        tracksProcessed = tracks.size
-
-        tracks.forEach { track ->
-            // Extract bounding box from GeoJSON
-            val bbox = extractBoundingBox(track.geoJson)
-            if (bbox != null) {
-                // Build Overpass query
-                val bboxString = """${bbox.minLat},${bbox.minLon},${bbox.maxLat},${bbox.maxLon}"""
-                val query = """
-                    [out:json];
-                    (
-                      node[natural][natural != tree][natural != shrub]($bboxString);
-                      node[geological]($bboxString);
-                      node[historic]($bboxString);
-                      node[tourism = artwork]($bboxString);
-                      node[tourism = viewpoint]($bboxString);
-                    );
-                    out body;
-                """.trimIndent()
-
-                // Call Overpass API
-                val url = URL("https://overpass-api.de/api/interpreter")
-                val connection = url.openConnection()
-                connection.doOutput = true
-                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-
-                connection.outputStream.use { os ->
-                    os.write("data=${query}".toByteArray())
-                }
-
-                val response = connection.inputStream.bufferedReader().use { it.readText() }
-                val jsonResponse = Json.parseToJsonElement(response).jsonObject
-
-                if (jsonResponse.containsKey("elements")) {
-                    val elements = jsonResponse["elements"]?.jsonArray ?: return@forEach
-
-                    elements.forEach { element ->
-                        val obj = element.jsonObject
-                        if (obj["type"]?.jsonPrimitive?.content == "node") {
-                            val id = obj["id"]?.jsonPrimitive?.content ?: return@forEach
-                            val lat = obj["lat"]?.jsonPrimitive?.double ?: return@forEach
-                            val lon = obj["lon"]?.jsonPrimitive?.double ?: return@forEach
-                            val tags = obj["tags"]?.jsonObject
-
-                            // Determine POI type and name
-                            var poiType = "unknown"
-                            var poiName: String? = null
-
-                            tags?.let {
-                                if (it.containsKey("amenity")) {
-                                    poiType = "amenity:${it["amenity"]?.jsonPrimitive?.content}"
-                                } else if (it.containsKey("tourism")) {
-                                    poiType = "tourism:${it["tourism"]?.jsonPrimitive?.content}"
-                                } else if (it.containsKey("shop")) {
-                                    poiType = "shop:${it["shop"]?.jsonPrimitive?.content}"
-                                } else if (it.containsKey("leisure")) {
-                                    poiType = "leisure:${it["leisure"]?.jsonPrimitive?.content}"
-                                } else if (it.containsKey("natural")) {
-                                    poiType = "natural:${it["natural"]?.jsonPrimitive?.content}"
-                                } else if (it.containsKey("historic")) {
-                                    poiType = "historic:${it["historic"]?.jsonPrimitive?.content}"
-                                }
-
-                                poiName = it["name"]?.jsonPrimitive?.content
-                            }
-
-                            // Store POI in database
-                            POIEntity.new {
-                                this.inputData = track
-                                this.type = poiType
-                                this.name = poiName
-                                this.latitude = lat
-                                this.longitude = lon
-                                this.osmId = id
-                                this.properties = tags?.toString() ?: "{}"
-                            }
-
-                            totalPois++
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return POISearchResult(totalPois, tracksProcessed)
-}
-
-fun importDataFromCsv(): ImportResult {
-    val file = File("input/flat/id_geojson.csv")
-    if (!file.exists()) {
-        throw IllegalStateException("CSV file not found at ${file.absolutePath}")
-    }
-
-    var importCount = 0
-
-    transaction {
-        CSVParser.parse(file, StandardCharsets.UTF_8, CSVFormat.DEFAULT).use { csvParser ->
-            for (record in csvParser) {
-                if (record.size() >= 2) {
-                    val hikeId = record.get(0)
-                    val geoJson = record.get(1)
-
-                    // Check if record already exists
-                    val existingRecord = InputDataEntity.find { InputDataTable.hikeId eq hikeId }.firstOrNull()
-
-                    if (existingRecord == null) {
-                        // Create new record
-                        InputDataEntity.new {
-                            this.hikeId = hikeId
-                            this.geoJson = geoJson
-                        }
-                        importCount++
-                    }
-                }
-            }
-        }
-    }
-
-    return ImportResult(importCount)
 }
