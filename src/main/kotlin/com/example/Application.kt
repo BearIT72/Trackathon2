@@ -4,6 +4,8 @@ import com.example.models.ApiResponse
 import com.example.models.VersionInfo
 import com.example.templates.IndexPage
 import com.example.templates.welcomeContent
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -15,6 +17,8 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.html.*
 import kotlinx.serialization.json.Json
+import org.jetbrains.exposed.sql.Database
+import java.sql.Connection
 
 fun main() {
     embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = Application::module)
@@ -22,6 +26,9 @@ fun main() {
 }
 
 fun Application.module() {
+    // Initialize database
+    initDatabase()
+
     // Install ContentNegotiation feature
     install(ContentNegotiation) {
         json(Json {
@@ -32,6 +39,30 @@ fun Application.module() {
 
     // Configure routing
     configureRouting()
+}
+
+fun Application.initDatabase() {
+    val config = environment.config.config("database")
+    val driverClassName = config.property("driverClassName").getString()
+    val jdbcURL = config.property("jdbcURL").getString()
+    val username = config.property("username").getString()
+    val password = config.property("password").getString()
+
+    val hikariConfig = HikariConfig().apply {
+        this.driverClassName = driverClassName
+        this.jdbcUrl = jdbcURL
+        this.username = username
+        this.password = password
+        this.maximumPoolSize = 10
+        this.isAutoCommit = false
+        this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+        this.validate()
+    }
+
+    val dataSource = HikariDataSource(hikariConfig)
+    Database.connect(dataSource)
+
+    log.info("Database initialized with $jdbcURL")
 }
 
 fun Application.configureRouting() {
