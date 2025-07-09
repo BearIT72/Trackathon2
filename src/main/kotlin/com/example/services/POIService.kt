@@ -426,6 +426,44 @@ class POIService {
             return null
         }
     }
+
+    /**
+     * Get all POIs for a specific track
+     * @param hikeId The ID of the hike/track
+     * @return List of POIDTO objects
+     */
+    fun getPOIsForTrack(hikeId: String): List<POIDTO> {
+        return transaction {
+            // Find the input data entity for the given hikeId
+            val inputData = InputDataEntity.find { InputDataTable.hikeId eq hikeId }.firstOrNull()
+                ?: return@transaction emptyList()
+
+            // Find all POIs associated with this input data
+            POIEntity.find { POITable.inputDataId eq inputData.id }
+                .map { it.toDTO() }
+        }
+    }
+
+    /**
+     * Get track data (GeoJSON) for a specific track
+     * @param hikeId The ID of the hike/track
+     * @return The GeoJSON string or null if not found
+     */
+    fun getTrackData(hikeId: String): String? {
+        return transaction {
+            InputDataEntity.find { InputDataTable.hikeId eq hikeId }.firstOrNull()?.geoJson
+        }
+    }
+
+    /**
+     * Get all hike IDs
+     * @return List of hike IDs
+     */
+    fun getAllHikeIds(): List<String> {
+        return transaction {
+            InputDataEntity.all().map { it.hikeId }
+        }
+    }
 }
 
 /**

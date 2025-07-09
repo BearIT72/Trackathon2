@@ -7,6 +7,7 @@ import com.example.services.POIService
 import com.example.templates.IndexPage
 import com.example.templates.importPageContent
 import com.example.templates.poisPageContent
+import com.example.templates.viewPoisPageContent
 import com.example.templates.welcomeContent
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
@@ -184,6 +185,23 @@ fun Application.configureRouting() {
                 activeTab = "pois"
                 content {
                     poisPageContent(poiCounts, totalPois)
+                }
+            }
+        }
+
+        // View POIs page routes
+        get("/view-pois") {
+            val hikeIds = poiService.getAllHikeIds()
+            val selectedHikeId = call.request.queryParameters["hikeId"]
+
+            // If a hike is selected, get its POIs and track data
+            val pois = if (selectedHikeId != null) poiService.getPOIsForTrack(selectedHikeId) else emptyList()
+            val trackData = if (selectedHikeId != null) poiService.getTrackData(selectedHikeId) else null
+
+            call.respondHtmlTemplate(IndexPage()) {
+                activeTab = "view-pois"
+                content {
+                    viewPoisPageContent(hikeIds, selectedHikeId, pois, trackData)
                 }
             }
         }

@@ -1,6 +1,7 @@
 package com.example.templates
 
 import com.example.models.POICountDTO
+import com.example.models.POIDTO
 import io.ktor.server.html.*
 import kotlinx.html.*
 
@@ -32,6 +33,11 @@ class IndexPage : Template<HTML> {
                     li("nav-item") {
                         a(classes = "nav-link ${if (activeTab == "pois") "active" else ""}", href = "/pois") {
                             +"POIs"
+                        }
+                    }
+                    li("nav-item") {
+                        a(classes = "nav-link ${if (activeTab == "view-pois") "active" else ""}", href = "/view-pois") {
+                            +"View POIs"
                         }
                     }
                     li("nav-item") {
@@ -267,6 +273,11 @@ fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), tota
                                                 +"Purge"
                                             }
                                         }
+
+                                        // View button (view POIs for this track)
+                                        a(href = "/view-pois?hikeId=${poiCount.hikeId}", classes = "btn btn-info btn-sm") {
+                                            +"View"
+                                        }
                                     }
                                 }
                             }
@@ -289,6 +300,139 @@ fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), tota
     } else {
         div("alert alert-info mt-4") {
             +"No POI data available. Use the 'Search POIs' button to find Points of Interest near your tracks."
+        }
+    }
+}
+
+/**
+ * Content for the View POIs tab
+ * @param hikeIds List of all hike IDs
+ * @param selectedHikeId Currently selected hike ID
+ * @param pois List of POIs for the selected hike
+ * @param trackData GeoJSON data for the selected hike
+ */
+fun FlowContent.viewPoisPageContent(
+    hikeIds: List<String> = emptyList(),
+    selectedHikeId: String? = null,
+    pois: List<POIDTO> = emptyList(),
+    trackData: String? = null
+) {
+    h1 { +"View POIs" }
+    p { +"Select a hike to view its POIs on the map." }
+
+    // Hike selection form
+    div("card mt-4") {
+        div("card-body") {
+            h5("card-title") { +"Select Hike" }
+
+            form(action = "/view-pois", method = FormMethod.get) {
+                div("mb-3") {
+                    label("form-label") {
+                        htmlFor = "hikeId"
+                        +"Hike ID"
+                    }
+                    select("form-select") {
+                        id = "hikeId"
+                        name = "hikeId"
+                        attributes["onChange"] = "this.form.submit()"
+
+                        option {
+                            value = ""
+                            +"-- Select a hike --"
+                        }
+
+                        hikeIds.forEach { hikeId ->
+                            option {
+                                value = hikeId
+                                selected = hikeId == selectedHikeId
+                                +hikeId
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Map and POI display
+    if (selectedHikeId != null && trackData != null) {
+        div("card mt-4") {
+            div("card-body") {
+                h5("card-title") { +"Map for Hike: $selectedHikeId" }
+                p { +"POIs found: ${pois.size}" }
+
+                // Map container
+                div {
+                    id = "map"
+                    style = "height: 500px; width: 100%;"
+                }
+
+                // Include Leaflet CSS and JS
+                unsafe {
+                    +"""
+                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+                        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+                        crossorigin=""/>
+                    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+                        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+                        crossorigin=""></script>
+                    """
+                }
+
+                // JavaScript to initialize the map and add POIs and track
+                script {
+                    unsafe {
+                        +"""
+                        document.addEventListener('DOMContentLoaded', function() {
+                            // Initialize map
+                            const map = L.map('map');
+
+                            // Add OpenStreetMap tile layer
+                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            }).addTo(map);
+
+                            // Parse track GeoJSON
+                            const trackData = ${trackData};
+
+                            // Add track to map as a blue line
+                            const trackLayer = L.geoJSON(trackData, {
+                                style: {
+                                    color: 'blue',
+                                    weight: 3,
+                                    opacity: 0.7
+                                }
+                            }).addTo(map);
+
+                            // Fit map to track bounds
+                            map.fitBounds(trackLayer.getBounds());
+
+                            // Add POI markers
+                            const pois = [
+                                ${pois.joinToString(",\n                                ") { poi -> 
+                                    """{
+                                    id: "${poi.id}",
+                                    name: "${poi.name ?: "Unknown"}",
+                                    type: "${poi.type}",
+                                    lat: ${poi.latitude},
+                                    lng: ${poi.longitude}
+                                }"""
+                                }}
+                            ];
+
+                            pois.forEach(function(poi) {
+                                const marker = L.marker([poi.lat, poi.lng]).addTo(map);
+                                marker.bindPopup('<b>' + poi.name + '</b><br>Type: ' + poi.type);
+                            });
+                        });
+                        """
+                    }
+                }
+            }
+        }
+    } else if (selectedHikeId != null) {
+        div("alert alert-warning mt-4") {
+            +"No track data available for the selected hike or no POIs found. Please make sure you have imported the track data and searched for POIs."
         }
     }
 }
