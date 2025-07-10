@@ -222,7 +222,12 @@ fun Application.configureRouting() {
 
         post("/pois/search") {
             try {
-                val searchResult = poiService.searchAndStorePOIs()
+                // Extract selected map features and sublevels from form data
+                val parameters = call.receiveParameters()
+                val mapFeatures = parameters.getAll("mapFeatures") ?: listOf("natural", "geological", "historic", "tourism")
+                val mapFeaturesSublevels = parameters.getAll("mapFeatures-sublevel") ?: emptyList()
+
+                val searchResult = poiService.searchAndStorePOIs(mapFeatures, mapFeaturesSublevels)
                 val poiCounts = poiService.getPOICountsByTrack()
                 val totalPois = poiService.getTotalPOICount()
                 val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
@@ -232,6 +237,10 @@ fun Application.configureRouting() {
                         div("alert alert-success") {
                             h4("alert-heading") { +"POI Search Successful!" }
                             p { +"Found and stored ${searchResult.totalPois} POIs across ${searchResult.tracksProcessed} tracks." }
+                            p { +"Map features used: ${mapFeatures.joinToString(", ")}" }
+                            if (mapFeaturesSublevels.isNotEmpty()) {
+                                p { +"Map feature sublevels used: ${mapFeaturesSublevels.joinToString(", ")}" }
+                            }
                         }
                         poisPageContent(poiCounts, totalPois, hikesWithoutPOIs)
                     }
@@ -333,7 +342,13 @@ fun Application.configureRouting() {
         post("/pois/search/{hikeId}") {
             try {
                 val hikeId = call.parameters["hikeId"] ?: throw IllegalArgumentException("Missing hikeId parameter")
-                val searchResult = poiService.searchAndStorePOIsForTrack(hikeId)
+
+                // Extract selected map features and sublevels from form data if available
+                val parameters = call.receiveParameters()
+                val mapFeatures = parameters.getAll("mapFeatures") ?: listOf("natural", "geological", "historic", "tourism")
+                val mapFeaturesSublevels = parameters.getAll("mapFeatures-sublevel") ?: emptyList()
+
+                val searchResult = poiService.searchAndStorePOIsForTrack(hikeId, mapFeatures, mapFeaturesSublevels)
                 val poiCounts = poiService.getPOICountsByTrack()
                 val totalPois = poiService.getTotalPOICount()
                 val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
@@ -344,6 +359,10 @@ fun Application.configureRouting() {
                         div("alert alert-success") {
                             h4("alert-heading") { +"POI Search Successful!" }
                             p { +"Found and stored ${searchResult.totalPois} POIs for track ${hikeId}." }
+                            p { +"Map features used: ${mapFeatures.joinToString(", ")}" }
+                            if (mapFeaturesSublevels.isNotEmpty()) {
+                                p { +"Map feature sublevels used: ${mapFeaturesSublevels.joinToString(", ")}" }
+                            }
                         }
                         poisPageContent(poiCounts, totalPois, hikesWithoutPOIs)
                     }
@@ -371,7 +390,12 @@ fun Application.configureRouting() {
         // Search POIs for all tracks missing them
         post("/pois/search-missing") {
             try {
-                val searchResult = poiService.searchAndStorePOIsForMissingTracks()
+                // Extract selected map features and sublevels from form data if available
+                val parameters = call.receiveParameters()
+                val mapFeatures = parameters.getAll("mapFeatures") ?: listOf("natural", "geological", "historic", "tourism")
+                val mapFeaturesSublevels = parameters.getAll("mapFeatures-sublevel") ?: emptyList()
+
+                val searchResult = poiService.searchAndStorePOIsForMissingTracks(mapFeatures, mapFeaturesSublevels)
                 val poiCounts = poiService.getPOICountsByTrack()
                 val totalPois = poiService.getTotalPOICount()
                 val hikesWithoutPOIs = poiService.getHikesWithoutPOIsCount()
@@ -382,6 +406,10 @@ fun Application.configureRouting() {
                         div("alert alert-success") {
                             h4("alert-heading") { +"POI Search Successful!" }
                             p { +"Found and stored ${searchResult.totalPois} POIs across ${searchResult.tracksProcessed} tracks that were missing POIs." }
+                            p { +"Map features used: ${mapFeatures.joinToString(", ")}" }
+                            if (mapFeaturesSublevels.isNotEmpty()) {
+                                p { +"Map feature sublevels used: ${mapFeaturesSublevels.joinToString(", ")}" }
+                            }
                         }
                         poisPageContent(poiCounts, totalPois, hikesWithoutPOIs)
                     }

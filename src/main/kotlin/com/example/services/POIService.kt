@@ -77,9 +77,14 @@ class POIService {
 
     /**
      * Search for POIs and store them in the database
+     * @param mapFeatures List of map features to search for
+     * @param mapFeaturesSublevels List of map feature sublevels to search for
      * @return POISearchResult with the count of POIs found and tracks processed
      */
-    fun searchAndStorePOIs(): POISearchResult {
+    fun searchAndStorePOIs(
+        mapFeatures: List<String> = listOf("natural", "geological", "historic", "tourism"),
+        mapFeaturesSublevels: List<String> = emptyList()
+    ): POISearchResult {
         var totalPois = 0
         var tracksProcessed = 0
 
@@ -103,14 +108,118 @@ class POIService {
                 if (bbox != null) {
                     // Build Overpass query
                     val bboxString = """${bbox.minLat},${bbox.minLon},${bbox.maxLat},${bbox.maxLon}"""
+
+                    // Build query based on selected map features and sublevels
+                    val queryParts = mutableListOf<String>()
+
+                    // Process natural features
+                    if (mapFeatures.contains("natural")) {
+                        // Check if there are any natural sublevels selected
+                        val naturalSublevels = mapFeaturesSublevels.filter { it.startsWith("natural-") }
+                        if (naturalSublevels.isNotEmpty()) {
+                            // Add specific natural sublevels
+                            naturalSublevels.forEach { sublevel ->
+                                val value = sublevel.substringAfter("natural-")
+                                queryParts.add("node[natural=$value]($bboxString);")
+                            }
+                        } else {
+                            // Add generic natural query (excluding trees and shrubs)
+                            queryParts.add("node[natural][natural != tree][natural != shrub]($bboxString);")
+                        }
+                    }
+
+                    // Process geological features
+                    if (mapFeatures.contains("geological")) {
+                        // Check if there are any geological sublevels selected
+                        val geologicalSublevels = mapFeaturesSublevels.filter { it.startsWith("geological-") }
+                        if (geologicalSublevels.isNotEmpty()) {
+                            // Add specific geological sublevels
+                            geologicalSublevels.forEach { sublevel ->
+                                val value = sublevel.substringAfter("geological-")
+                                queryParts.add("node[geological=$value]($bboxString);")
+                            }
+                        } else {
+                            // Add generic geological query
+                            queryParts.add("node[geological]($bboxString);")
+                        }
+                    }
+
+                    // Process historic features
+                    if (mapFeatures.contains("historic")) {
+                        // Check if there are any historic sublevels selected
+                        val historicSublevels = mapFeaturesSublevels.filter { it.startsWith("historic-") }
+                        if (historicSublevels.isNotEmpty()) {
+                            // Add specific historic sublevels
+                            historicSublevels.forEach { sublevel ->
+                                val value = sublevel.substringAfter("historic-")
+                                queryParts.add("node[historic=$value]($bboxString);")
+                            }
+                        } else {
+                            // Add generic historic query
+                            queryParts.add("node[historic]($bboxString);")
+                        }
+                    }
+
+                    // Process tourism features
+                    if (mapFeatures.contains("tourism")) {
+                        // Check if there are any tourism sublevels selected
+                        val tourismSublevels = mapFeaturesSublevels.filter { it.startsWith("tourism-") }
+                        if (tourismSublevels.isNotEmpty()) {
+                            // Add specific tourism sublevels
+                            tourismSublevels.forEach { sublevel ->
+                                val value = sublevel.substringAfter("tourism-")
+                                queryParts.add("node[tourism=$value]($bboxString);")
+                            }
+                        } else {
+                            // Add default tourism queries
+                            queryParts.add("node[tourism=artwork]($bboxString);")
+                            queryParts.add("node[tourism=viewpoint]($bboxString);")
+                        }
+                    }
+
+                    // Process amenity features
+                    if (mapFeatures.contains("amenity")) {
+                        // Check if there are any amenity sublevels selected
+                        val amenitySublevels = mapFeaturesSublevels.filter { it.startsWith("amenity-") }
+                        if (amenitySublevels.isNotEmpty()) {
+                            // Add specific amenity sublevels
+                            amenitySublevels.forEach { sublevel ->
+                                val value = sublevel.substringAfter("amenity-")
+                                queryParts.add("node[amenity=$value]($bboxString);")
+                            }
+                        } else {
+                            // Add generic amenity query
+                            queryParts.add("node[amenity]($bboxString);")
+                        }
+                    }
+
+                    // Add other features without sublevels
+                    if (mapFeatures.contains("shop")) {
+                        queryParts.add("node[shop]($bboxString);")
+                    }
+                    if (mapFeatures.contains("leisure")) {
+                        queryParts.add("node[leisure]($bboxString);")
+                    }
+                    if (mapFeatures.contains("landuse")) {
+                        queryParts.add("node[landuse]($bboxString);")
+                    }
+                    if (mapFeatures.contains("waterway")) {
+                        queryParts.add("node[waterway]($bboxString);")
+                    }
+
+                    // If no features selected, use defaults
+                    if (queryParts.isEmpty()) {
+                        queryParts.add("node[natural][natural != tree][natural != shrub]($bboxString);")
+                        queryParts.add("node[geological]($bboxString);")
+                        queryParts.add("node[historic]($bboxString);")
+                        queryParts.add("node[tourism=artwork]($bboxString);")
+                        queryParts.add("node[tourism=viewpoint]($bboxString);")
+                    }
+
                     val query = """
                         [out:json];
                         (
-                          node[natural][natural != tree][natural != shrub]($bboxString);
-                          node[geological]($bboxString);
-                          node[historic]($bboxString);
-                          node[tourism = artwork]($bboxString);
-                          node[tourism = viewpoint]($bboxString);
+                          ${queryParts.joinToString("\n          ")}
                         );
                         out body;
                     """.trimIndent()
@@ -228,9 +337,15 @@ class POIService {
     /**
      * Search for POIs for a specific track and store them in the database
      * @param hikeId The ID of the hike/track
+     * @param mapFeatures List of map features to search for
+     * @param mapFeaturesSublevels List of map feature sublevels to search for
      * @return POISearchResult with the count of POIs found and tracks processed
      */
-    fun searchAndStorePOIsForTrack(hikeId: String): POISearchResult {
+    fun searchAndStorePOIsForTrack(
+        hikeId: String, 
+        mapFeatures: List<String> = listOf("natural", "geological", "historic", "tourism"),
+        mapFeaturesSublevels: List<String> = emptyList()
+    ): POISearchResult {
         var totalPois = 0
         var tracksProcessed = 0
 
@@ -256,14 +371,118 @@ class POIService {
                 if (bbox != null) {
                     // Build Overpass query
                     val bboxString = """${bbox.minLat},${bbox.minLon},${bbox.maxLat},${bbox.maxLon}"""
+
+                    // Build query based on selected map features and sublevels
+                    val queryParts = mutableListOf<String>()
+
+                    // Process natural features
+                    if (mapFeatures.contains("natural")) {
+                        // Check if there are any natural sublevels selected
+                        val naturalSublevels = mapFeaturesSublevels.filter { it.startsWith("natural-") }
+                        if (naturalSublevels.isNotEmpty()) {
+                            // Add specific natural sublevels
+                            naturalSublevels.forEach { sublevel ->
+                                val value = sublevel.substringAfter("natural-")
+                                queryParts.add("node[natural=$value]($bboxString);")
+                            }
+                        } else {
+                            // Add generic natural query (excluding trees and shrubs)
+                            queryParts.add("node[natural][natural != tree][natural != shrub]($bboxString);")
+                        }
+                    }
+
+                    // Process geological features
+                    if (mapFeatures.contains("geological")) {
+                        // Check if there are any geological sublevels selected
+                        val geologicalSublevels = mapFeaturesSublevels.filter { it.startsWith("geological-") }
+                        if (geologicalSublevels.isNotEmpty()) {
+                            // Add specific geological sublevels
+                            geologicalSublevels.forEach { sublevel ->
+                                val value = sublevel.substringAfter("geological-")
+                                queryParts.add("node[geological=$value]($bboxString);")
+                            }
+                        } else {
+                            // Add generic geological query
+                            queryParts.add("node[geological]($bboxString);")
+                        }
+                    }
+
+                    // Process historic features
+                    if (mapFeatures.contains("historic")) {
+                        // Check if there are any historic sublevels selected
+                        val historicSublevels = mapFeaturesSublevels.filter { it.startsWith("historic-") }
+                        if (historicSublevels.isNotEmpty()) {
+                            // Add specific historic sublevels
+                            historicSublevels.forEach { sublevel ->
+                                val value = sublevel.substringAfter("historic-")
+                                queryParts.add("node[historic=$value]($bboxString);")
+                            }
+                        } else {
+                            // Add generic historic query
+                            queryParts.add("node[historic]($bboxString);")
+                        }
+                    }
+
+                    // Process tourism features
+                    if (mapFeatures.contains("tourism")) {
+                        // Check if there are any tourism sublevels selected
+                        val tourismSublevels = mapFeaturesSublevels.filter { it.startsWith("tourism-") }
+                        if (tourismSublevels.isNotEmpty()) {
+                            // Add specific tourism sublevels
+                            tourismSublevels.forEach { sublevel ->
+                                val value = sublevel.substringAfter("tourism-")
+                                queryParts.add("node[tourism=$value]($bboxString);")
+                            }
+                        } else {
+                            // Add default tourism queries
+                            queryParts.add("node[tourism=artwork]($bboxString);")
+                            queryParts.add("node[tourism=viewpoint]($bboxString);")
+                        }
+                    }
+
+                    // Process amenity features
+                    if (mapFeatures.contains("amenity")) {
+                        // Check if there are any amenity sublevels selected
+                        val amenitySublevels = mapFeaturesSublevels.filter { it.startsWith("amenity-") }
+                        if (amenitySublevels.isNotEmpty()) {
+                            // Add specific amenity sublevels
+                            amenitySublevels.forEach { sublevel ->
+                                val value = sublevel.substringAfter("amenity-")
+                                queryParts.add("node[amenity=$value]($bboxString);")
+                            }
+                        } else {
+                            // Add generic amenity query
+                            queryParts.add("node[amenity]($bboxString);")
+                        }
+                    }
+
+                    // Add other features without sublevels
+                    if (mapFeatures.contains("shop")) {
+                        queryParts.add("node[shop]($bboxString);")
+                    }
+                    if (mapFeatures.contains("leisure")) {
+                        queryParts.add("node[leisure]($bboxString);")
+                    }
+                    if (mapFeatures.contains("landuse")) {
+                        queryParts.add("node[landuse]($bboxString);")
+                    }
+                    if (mapFeatures.contains("waterway")) {
+                        queryParts.add("node[waterway]($bboxString);")
+                    }
+
+                    // If no features selected, use defaults
+                    if (queryParts.isEmpty()) {
+                        queryParts.add("node[natural][natural != tree][natural != shrub]($bboxString);")
+                        queryParts.add("node[geological]($bboxString);")
+                        queryParts.add("node[historic]($bboxString);")
+                        queryParts.add("node[tourism=artwork]($bboxString);")
+                        queryParts.add("node[tourism=viewpoint]($bboxString);")
+                    }
+
                     val query = """
                         [out:json];
                         (
-                          node[natural][natural != tree][natural != shrub]($bboxString);
-                          node[geological]($bboxString);
-                          node[historic]($bboxString);
-                          node[tourism = artwork]($bboxString);
-                          node[tourism = viewpoint]($bboxString);
+                          ${queryParts.joinToString("\n          ")}
                         );
                         out body;
                     """.trimIndent()
@@ -358,9 +577,14 @@ class POIService {
 
     /**
      * Search for POIs for all tracks that don't have any POIs
+     * @param mapFeatures List of map features to search for
+     * @param mapFeaturesSublevels List of map feature sublevels to search for
      * @return POISearchResult with the count of POIs found and tracks processed
      */
-    fun searchAndStorePOIsForMissingTracks(): POISearchResult {
+    fun searchAndStorePOIsForMissingTracks(
+        mapFeatures: List<String> = listOf("natural", "geological", "historic", "tourism"),
+        mapFeaturesSublevels: List<String> = emptyList()
+    ): POISearchResult {
         var totalPois = 0
         var tracksProcessed = 0
 
@@ -379,7 +603,7 @@ class POIService {
 
         // Process each track
         tracksWithoutPOIs.forEach { hikeId ->
-            val result = searchAndStorePOIsForTrack(hikeId)
+            val result = searchAndStorePOIsForTrack(hikeId, mapFeatures, mapFeaturesSublevels)
             totalPois += result.totalPois
             tracksProcessed += result.tracksProcessed
         }

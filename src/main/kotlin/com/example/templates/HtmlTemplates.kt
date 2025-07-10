@@ -359,6 +359,414 @@ fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), tota
             div("d-flex gap-2") {
                 form(action = "/pois/search", method = FormMethod.post) {
                     attributes["id"] = "search-poi-form"
+
+                    // Map features selection panel
+                    div("card mb-3") {
+                        div("card-body") {
+                            h6("card-title") { +"Select Map Features to Retrieve" }
+                            p("card-text") { +"Select which OpenStreetMap features you want to search for:" }
+
+                            // Natural features
+                            div("mb-3") {
+                                div("form-check") {
+                                    input(type = InputType.checkBox, classes = "form-check-input feature-parent") {
+                                        id = "feature-natural"
+                                        name = "mapFeatures"
+                                        value = "natural"
+                                        checked = true
+                                    }
+                                    label("form-check-label") {
+                                        htmlFor = "feature-natural"
+                                        +"Natural (peaks, water, etc.)"
+                                    }
+                                    button(type = ButtonType.button, classes = "btn btn-sm btn-link ms-2 toggle-subfeatures") {
+                                        attributes["data-target"] = "natural-subfeatures"
+                                        +"Show/Hide Subfeatures"
+                                    }
+                                }
+                                div("ms-4 mt-2 subfeatures") {
+                                    id = "natural-subfeatures"
+                                    style = "display: none;"
+                                    div("row") {
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-natural-peak"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "natural-peak"
+                                                    attributes["data-parent"] = "feature-natural"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-natural-peak"
+                                                    +"Peak"
+                                                }
+                                            }
+                                        }
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-natural-water"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "natural-water"
+                                                    attributes["data-parent"] = "feature-natural"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-natural-water"
+                                                    +"Water"
+                                                }
+                                            }
+                                        }
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-natural-cliff"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "natural-cliff"
+                                                    attributes["data-parent"] = "feature-natural"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-natural-cliff"
+                                                    +"Cliff"
+                                                }
+                                            }
+                                        }
+                                    }
+                                    div("row mt-2") {
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-natural-cave_entrance"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "natural-cave_entrance"
+                                                    attributes["data-parent"] = "feature-natural"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-natural-cave_entrance"
+                                                    +"Cave Entrance"
+                                                }
+                                            }
+                                        }
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-natural-spring"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "natural-spring"
+                                                    attributes["data-parent"] = "feature-natural"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-natural-spring"
+                                                    +"Spring"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Geological features
+                            div("mb-3") {
+                                div("form-check") {
+                                    input(type = InputType.checkBox, classes = "form-check-input feature-parent") {
+                                        id = "feature-geological"
+                                        name = "mapFeatures"
+                                        value = "geological"
+                                        checked = true
+                                    }
+                                    label("form-check-label") {
+                                        htmlFor = "feature-geological"
+                                        +"Geological"
+                                    }
+                                    button(type = ButtonType.button, classes = "btn btn-sm btn-link ms-2 toggle-subfeatures") {
+                                        attributes["data-target"] = "geological-subfeatures"
+                                        +"Show/Hide Subfeatures"
+                                    }
+                                }
+                                div("ms-4 mt-2 subfeatures") {
+                                    id = "geological-subfeatures"
+                                    style = "display: none;"
+                                    div("row") {
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-geological-moraine"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "geological-moraine"
+                                                    attributes["data-parent"] = "feature-geological"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-geological-moraine"
+                                                    +"Moraine"
+                                                }
+                                            }
+                                        }
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-geological-outcrop"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "geological-outcrop"
+                                                    attributes["data-parent"] = "feature-geological"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-geological-outcrop"
+                                                    +"Outcrop"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Historic features
+                            div("mb-3") {
+                                div("form-check") {
+                                    input(type = InputType.checkBox, classes = "form-check-input feature-parent") {
+                                        id = "feature-historic"
+                                        name = "mapFeatures"
+                                        value = "historic"
+                                        checked = true
+                                    }
+                                    label("form-check-label") {
+                                        htmlFor = "feature-historic"
+                                        +"Historic"
+                                    }
+                                    button(type = ButtonType.button, classes = "btn btn-sm btn-link ms-2 toggle-subfeatures") {
+                                        attributes["data-target"] = "historic-subfeatures"
+                                        +"Show/Hide Subfeatures"
+                                    }
+                                }
+                                div("ms-4 mt-2 subfeatures") {
+                                    id = "historic-subfeatures"
+                                    style = "display: none;"
+                                    div("row") {
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-historic-monument"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "historic-monument"
+                                                    attributes["data-parent"] = "feature-historic"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-historic-monument"
+                                                    +"Monument"
+                                                }
+                                            }
+                                        }
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-historic-ruins"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "historic-ruins"
+                                                    attributes["data-parent"] = "feature-historic"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-historic-ruins"
+                                                    +"Ruins"
+                                                }
+                                            }
+                                        }
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-historic-castle"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "historic-castle"
+                                                    attributes["data-parent"] = "feature-historic"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-historic-castle"
+                                                    +"Castle"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Tourism features
+                            div("mb-3") {
+                                div("form-check") {
+                                    input(type = InputType.checkBox, classes = "form-check-input feature-parent") {
+                                        id = "feature-tourism"
+                                        name = "mapFeatures"
+                                        value = "tourism"
+                                        checked = true
+                                    }
+                                    label("form-check-label") {
+                                        htmlFor = "feature-tourism"
+                                        +"Tourism (artwork, viewpoints)"
+                                    }
+                                    button(type = ButtonType.button, classes = "btn btn-sm btn-link ms-2 toggle-subfeatures") {
+                                        attributes["data-target"] = "tourism-subfeatures"
+                                        +"Show/Hide Subfeatures"
+                                    }
+                                }
+                                div("ms-4 mt-2 subfeatures") {
+                                    id = "tourism-subfeatures"
+                                    style = "display: none;"
+                                    div("row") {
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-tourism-artwork"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "tourism-artwork"
+                                                    attributes["data-parent"] = "feature-tourism"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-tourism-artwork"
+                                                    +"Artwork"
+                                                }
+                                            }
+                                        }
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-tourism-viewpoint"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "tourism-viewpoint"
+                                                    attributes["data-parent"] = "feature-tourism"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-tourism-viewpoint"
+                                                    +"Viewpoint"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Amenity features
+                            div("mb-3") {
+                                div("form-check") {
+                                    input(type = InputType.checkBox, classes = "form-check-input feature-parent") {
+                                        id = "feature-amenity"
+                                        name = "mapFeatures"
+                                        value = "amenity"
+                                    }
+                                    label("form-check-label") {
+                                        htmlFor = "feature-amenity"
+                                        +"Amenity (benches, shelters, etc.)"
+                                    }
+                                    button(type = ButtonType.button, classes = "btn btn-sm btn-link ms-2 toggle-subfeatures") {
+                                        attributes["data-target"] = "amenity-subfeatures"
+                                        +"Show/Hide Subfeatures"
+                                    }
+                                }
+                                div("ms-4 mt-2 subfeatures") {
+                                    id = "amenity-subfeatures"
+                                    style = "display: none;"
+                                    div("row") {
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-amenity-bench"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "amenity-bench"
+                                                    attributes["data-parent"] = "feature-amenity"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-amenity-bench"
+                                                    +"Bench"
+                                                }
+                                            }
+                                        }
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-amenity-shelter"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "amenity-shelter"
+                                                    attributes["data-parent"] = "feature-amenity"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-amenity-shelter"
+                                                    +"Shelter"
+                                                }
+                                            }
+                                        }
+                                        div("col-md-4") {
+                                            div("form-check") {
+                                                input(type = InputType.checkBox, classes = "form-check-input feature-child") {
+                                                    id = "feature-amenity-drinking_water"
+                                                    name = "mapFeatures-sublevel"
+                                                    value = "amenity-drinking_water"
+                                                    attributes["data-parent"] = "feature-amenity"
+                                                }
+                                                label("form-check-label") {
+                                                    htmlFor = "feature-amenity-drinking_water"
+                                                    +"Drinking Water"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Other features (simplified for brevity)
+                            div("row mt-3") {
+                                div("col-md-4") {
+                                    div("form-check") {
+                                        input(type = InputType.checkBox, classes = "form-check-input feature-parent") {
+                                            id = "feature-shop"
+                                            name = "mapFeatures"
+                                            value = "shop"
+                                        }
+                                        label("form-check-label") {
+                                            htmlFor = "feature-shop"
+                                            +"Shop"
+                                        }
+                                    }
+                                }
+                                div("col-md-4") {
+                                    div("form-check") {
+                                        input(type = InputType.checkBox, classes = "form-check-input feature-parent") {
+                                            id = "feature-leisure"
+                                            name = "mapFeatures"
+                                            value = "leisure"
+                                        }
+                                        label("form-check-label") {
+                                            htmlFor = "feature-leisure"
+                                            +"Leisure"
+                                        }
+                                    }
+                                }
+                                div("col-md-4") {
+                                    div("form-check") {
+                                        input(type = InputType.checkBox, classes = "form-check-input feature-parent") {
+                                            id = "feature-landuse"
+                                            name = "mapFeatures"
+                                            value = "landuse"
+                                        }
+                                        label("form-check-label") {
+                                            htmlFor = "feature-landuse"
+                                            +"Land Use"
+                                        }
+                                    }
+                                }
+                            }
+                            div("row mt-2") {
+                                div("col-md-4") {
+                                    div("form-check") {
+                                        input(type = InputType.checkBox, classes = "form-check-input feature-parent") {
+                                            id = "feature-waterway"
+                                            name = "mapFeatures"
+                                            value = "waterway"
+                                        }
+                                        label("form-check-label") {
+                                            htmlFor = "feature-waterway"
+                                            +"Waterway"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     button(type = ButtonType.submit, classes = "btn btn-primary") {
                         +"Search POIs"
                     }
@@ -484,7 +892,8 @@ fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), tota
                                 td {
                                     div("d-flex gap-2") {
                                         // Refresh button (search POIs for this track)
-                                        form(action = "/pois/search/${poiCount.hikeId}", method = FormMethod.post) {
+                                        form(action = "/pois/search/${poiCount.hikeId}", method = FormMethod.post, classes = "refresh-poi-form") {
+                                            // Hidden inputs for map features will be populated by JavaScript
                                             button(type = ButtonType.submit, classes = "btn btn-primary btn-sm") {
                                                 +"Refresh"
                                             }
@@ -527,10 +936,118 @@ fun FlowContent.poisPageContent(poiCounts: List<POICountDTO> = emptyList(), tota
             // Add button to search POIs for all tracks missing them
             if (poiCounts.isNotEmpty()) {
                 div("mt-3") {
-                    form(action = "/pois/search-missing", method = FormMethod.post) {
+                    form(action = "/pois/search-missing", method = FormMethod.post, classes = "missing-tracks-form") {
+                        // Hidden inputs for map features will be populated by JavaScript
                         button(type = ButtonType.submit, classes = "btn btn-success") {
                             +"Search POIs for All Tracks Missing Them"
                         }
+                    }
+                }
+
+                // Add JavaScript to handle map features selection and copy to other forms
+                script {
+                    unsafe {
+                        +"""
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const missingTracksForm = document.querySelector('.missing-tracks-form');
+                            const refreshForms = document.querySelectorAll('.refresh-poi-form');
+                            const toggleButtons = document.querySelectorAll('.toggle-subfeatures');
+                            const parentCheckboxes = document.querySelectorAll('.feature-parent');
+                            const childCheckboxes = document.querySelectorAll('.feature-child');
+
+                            // Toggle subfeatures visibility
+                            toggleButtons.forEach(function(button) {
+                                button.addEventListener('click', function() {
+                                    const targetId = this.getAttribute('data-target');
+                                    const targetElement = document.getElementById(targetId);
+                                    if (targetElement.style.display === 'none') {
+                                        targetElement.style.display = 'block';
+                                    } else {
+                                        targetElement.style.display = 'none';
+                                    }
+                                });
+                            });
+
+                            // Handle parent checkbox changes
+                            parentCheckboxes.forEach(function(parentCheckbox) {
+                                parentCheckbox.addEventListener('change', function() {
+                                    const parentId = this.id;
+                                    const isChecked = this.checked;
+
+                                    // Update all child checkboxes
+                                    childCheckboxes.forEach(function(childCheckbox) {
+                                        if (childCheckbox.getAttribute('data-parent') === parentId) {
+                                            childCheckbox.checked = isChecked;
+                                        }
+                                    });
+                                });
+                            });
+
+                            // Handle child checkbox changes
+                            childCheckboxes.forEach(function(childCheckbox) {
+                                childCheckbox.addEventListener('change', function() {
+                                    const parentId = this.getAttribute('data-parent');
+                                    const parentCheckbox = document.getElementById(parentId);
+
+                                    // If a child is checked, ensure the parent is checked
+                                    if (this.checked && !parentCheckbox.checked) {
+                                        parentCheckbox.checked = true;
+                                    }
+
+                                    // If all children are unchecked, uncheck the parent
+                                    if (!this.checked) {
+                                        const siblings = Array.from(childCheckboxes).filter(
+                                            checkbox => checkbox.getAttribute('data-parent') === parentId
+                                        );
+                                        const allUnchecked = siblings.every(checkbox => !checkbox.checked);
+                                        if (allUnchecked) {
+                                            parentCheckbox.checked = false;
+                                        }
+                                    }
+                                });
+                            });
+
+                            // Function to copy selected map features from main form to target form
+                            function copySelectedMapFeatures(targetForm) {
+                                // Get all checked map features from the main form
+                                const mainForm = document.getElementById('search-poi-form');
+                                const checkedFeatures = mainForm.querySelectorAll('input[name="mapFeatures"]:checked');
+                                const checkedSubfeatures = mainForm.querySelectorAll('input[name="mapFeatures-sublevel"]:checked');
+
+                                // Add main features as hidden inputs to the target form
+                                checkedFeatures.forEach(function(feature) {
+                                    const hiddenInput = document.createElement('input');
+                                    hiddenInput.type = 'hidden';
+                                    hiddenInput.name = 'mapFeatures';
+                                    hiddenInput.value = feature.value;
+                                    targetForm.appendChild(hiddenInput);
+                                });
+
+                                // Add subfeatures as hidden inputs to the target form
+                                checkedSubfeatures.forEach(function(feature) {
+                                    const hiddenInput = document.createElement('input');
+                                    hiddenInput.type = 'hidden';
+                                    hiddenInput.name = 'mapFeatures-sublevel';
+                                    hiddenInput.value = feature.value;
+                                    targetForm.appendChild(hiddenInput);
+                                });
+                            }
+
+                            // Handle missing tracks form
+                            if (missingTracksForm) {
+                                missingTracksForm.addEventListener('submit', function(e) {
+                                    copySelectedMapFeatures(missingTracksForm);
+                                });
+                            }
+
+                            // Handle refresh forms
+                            refreshForms.forEach(function(form) {
+                                form.addEventListener('submit', function(e) {
+                                    copySelectedMapFeatures(form);
+                                });
+                            });
+                        });
+                        """
                     }
                 }
             }
